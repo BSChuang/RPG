@@ -1,0 +1,42 @@
+{
+  "project_info": {
+    "project_number": "995248184590",
+    "firebase_url": "https://mmorpg-2456c.firebaseio.com",
+    "project_id": "mmorpg-2456c",
+    "storage_bucket": "mmorpg-2456c.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:995248184590:android:9e074bd3244c904f",
+        "android_client_info": {
+          "package_name": "com.aurorastudios.rpg"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "995248184590-0lttpj5mu8j02nb75oje61fpg4c1cctj.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCu84WcoqdqGmbzjT_T59ECUtPKjQKSCwk"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 1,
+          "other_platform_oauth_client": []
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
