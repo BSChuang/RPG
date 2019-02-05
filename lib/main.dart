@@ -4,14 +4,15 @@
 
 import 'package:flutter/material.dart';
 import 'package:rpg/skills.dart';
-import 'package:rpg/character.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:rpg/battle.dart';
+import 'package:rpg/mainmenu.dart';
+import 'package:rpg/newChar.dart';
+
+final GoogleSignIn _googleSignIn = GoogleSignIn();
+final FirebaseAuth _auth = FirebaseAuth.instance;
+FirebaseUser user;
 
 void main() {
   //debugPaintSizeEnabled = true;
@@ -23,16 +24,17 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return new MaterialApp(
       title: 'Flutter Demo',
-      home: new MainScreen(),
+      home: new LoadingScreen(),
       routes: <String, WidgetBuilder> {
-        '/mainmenu': (BuildContext context) => new BattleScreen()
+        '/mainMenu': (BuildContext context) => new MainMenu(),
+        '/newChar': (BuildContext context) => new NewChar(),
         // MAKE TEST SCREEN
       },
     );
   }
 }
 
-class MainScreen extends StatelessWidget {
+class LoadingScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Skills();
@@ -46,10 +48,29 @@ class MainScreen extends StatelessWidget {
           body: RaisedButton(
               color: Colors.black45,
               textColor: Colors.white70,
-              child: new Text('Enter'),
-              onPressed: () => Navigator.of(context).pushNamed('/mainmenu')
+              child: new Text('Login'),
+              onPressed: () => _handleSignIn(context)
             )
-          )
+          ),
         );
+  }
+
+  Future<FirebaseUser> _handleSignIn(BuildContext context) async {
+    GoogleSignInAccount googleUser = await _googleSignIn.signIn();
+    GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+    AuthCredential _credential = GoogleAuthProvider.getCredential(
+        idToken: googleAuth.idToken,
+        accessToken: googleAuth.accessToken
+    );
+    user = await _auth.signInWithCredential(_credential);
+
+    DocumentSnapshot docSnap = await Firestore.instance.collection('players').document(user.uid).get();
+    if (docSnap.exists) {
+      Navigator.of(context).pushNamed('/mainMenu');
+    } else {
+      Navigator.of(context).pushNamed('/newChar');
+    }
+
+    return user;
   }
 }

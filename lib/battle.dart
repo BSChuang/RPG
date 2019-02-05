@@ -81,7 +81,7 @@ class _BattleScreenState extends State<BattleScreen>{
         borderRadius: new BorderRadius.circular(10.0)
       ),
         child: new FlatButton(
-            textColor: Colors.white,
+            textColor: Colors.black87,
 
             child: new Text(skillName),
             onPressed: () {
