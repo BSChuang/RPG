@@ -7,9 +7,7 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:rpg/battle.dart';
-
-Map<String, int> stats = new Map();
-int pointsAvailable = 0;
+import 'package:rpg/main.dart';
 
 class NewChar extends StatefulWidget {
   @override
@@ -17,6 +15,12 @@ class NewChar extends StatefulWidget {
 }
 
 class _NewCharState extends State<NewChar> {
+  Map<String, int> stats = new Map();
+  int pointsAvailable = 0;
+  final myController = TextEditingController();
+  String _radioValue = "knight";
+  String classDescription = "Higher armor, good for 1v1.";
+
   @override
   Widget build(BuildContext context) {
     initStats();
@@ -29,16 +33,95 @@ class _NewCharState extends State<NewChar> {
           ),
           body: new Column(
             children: <Widget>[
-              Text(pointsAvailable.toString()),
+              Text(classDescription),
+              classChooser(),
+              Text('Points Available: ' + pointsAvailable.toString()),
               statRow('Charisma'),
               statRow('Constitution'),
               statRow('Dexterity'),
               statRow('Intelligence'),
               statRow('Strength'),
               statRow('Wisdom'),
+              nameField(),
+              MaterialButton(
+                child: Text('Finish'),
+                color: Colors.blueAccent,
+                onPressed: () => submit(),
+              )
             ],
           )
       ),
+    );
+  }
+
+  void submit() {
+    print(stats);
+    Firestore.instance.collection('players').document(LoadingScreen.user.uid).setData({
+      'new': {
+        'name': myController.text,
+        'class': _radioValue,
+        'stats': stats
+      }
+    });
+  }
+
+  void _handleRadioValueChange(String value) {
+    setState(() {
+      _radioValue = value;
+
+      switch(value) {
+        case "knight":
+          classDescription = "Higher armor, good for 1v1.";
+          break;
+        case "wizard":
+          classDescription = "More fragile, but high damage and good versus multiple enemies.";
+          break;
+        case "rogue":
+          classDescription = "High crit chance, good utility skills.";
+          break;
+      }
+    });
+    print(value);
+  }
+
+  Widget classChooser() {
+    return Row(
+      children: <Widget>[
+        Radio(
+          value: "knight",
+          groupValue: _radioValue,
+          onChanged: _handleRadioValueChange,
+        ),
+        Text('Knight'),
+        Radio(
+          value: "wizard",
+          groupValue: _radioValue,
+          onChanged: _handleRadioValueChange,
+        ),
+        Text('Wizard'),
+        Radio(
+          value: "rogue",
+          groupValue: _radioValue,
+          onChanged: _handleRadioValueChange,
+        ),
+        Text('Rogue'),
+      ],
+    );
+  }
+
+  Widget nameField() {
+    return Row(
+      children: <Widget>[
+        Text('Username: '),
+        Expanded(
+          child: TextField(
+              controller: myController,
+              decoration: InputDecoration(
+                  hintText: 'Enter name'
+              )
+          ),
+        )
+      ],
     );
   }
 
@@ -47,7 +130,9 @@ class _NewCharState extends State<NewChar> {
       child: new Row(
         children: <Widget>[
           Container(
-            child: RaisedButton(
+            child: MaterialButton(
+              height: 40.0,
+              minWidth: 40.0,
               child: new Icon(Icons.arrow_back_ios),
               onPressed: () => changeStat(stat.toLowerCase(), false),
             ),
@@ -56,7 +141,9 @@ class _NewCharState extends State<NewChar> {
             child: Text(stats[stat.toLowerCase()].toString()),
           ),
           Container(
-            child: RaisedButton(
+            child: MaterialButton(
+              height: 40.0,
+              minWidth: 40.0,
               child: new Icon(Icons.arrow_forward_ios),
               onPressed: () => changeStat(stat.toLowerCase(), true),
             ),

@@ -15,6 +15,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "995248184590-97s73t4u4mu3inld1vu88g95jg7j0jjg.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.aurorastudios.rpg",
+            "certificate_hash": "3d3ad84177ed9c4329dfa8459e97ee2133c4d7d6"
+          }
+        },
+        {
           "client_id": "995248184590-0lttpj5mu8j02nb75oje61fpg4c1cctj.apps.googleusercontent.com",
           "client_type": 3
         }
@@ -29,8 +37,13 @@
           "status": 1
         },
         "appinvite_service": {
-          "status": 1,
-          "other_platform_oauth_client": []
+          "status": 2,
+          "other_platform_oauth_client": [
+            {
+              "client_id": "995248184590-0lttpj5mu8j02nb75oje61fpg4c1cctj.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         },
         "ads_service": {
           "status": 2

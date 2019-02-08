@@ -7,8 +7,8 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:rpg/battle.dart';
-
-
+import 'package:rpg/home.dart';
+import 'package:rpg/inventory.dart';
 
 class MainMenu extends StatefulWidget {
   @override
@@ -16,34 +16,40 @@ class MainMenu extends StatefulWidget {
 }
 
 class _MainMenuState extends State<MainMenu> {
-
+  int _currentIndex = 0;
+  final List<Widget> _children =[Home(), Inventory(), Home()];
 
   @override
   Widget build(BuildContext context) {
     // TODO: implement build
-    return MaterialApp(
-        title: 'RPG',
-        home: Scaffold(
-            appBar: AppBar(
-              title: Text('Main Menu'),
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Main Menu'),
+      ),
+      body: _children[_currentIndex],
+      bottomNavigationBar: BottomNavigationBar(
+          currentIndex: 0,
+          items: [
+            BottomNavigationBarItem(
+                icon: new Icon(Icons.home),
+                title: new Text('Home')
             ),
-            body: Row(
-              children: [
-                RaisedButton(
-                    color: Colors.black45,
-                    textColor: Colors.white70,
-                    child: new Text('Sign in'),
-                    onPressed: () => signIn()
-                ),
-              ]
+            BottomNavigationBarItem(
+                icon: new Icon(Icons.storage),
+                title: new Text('Inventory')
+            ),
+            BottomNavigationBarItem(
+                icon: new Icon(Icons.person),
+                title: new Text('Profile')
             )
-        )
+          ]
+      ),
     );
   }
 
-  void signIn() {
-    print('signed in ');
+  void onTabTapped(int index) {
+    setState(() {
+      _currentIndex = index;
+    });
   }
-
-
 }

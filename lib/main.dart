@@ -12,7 +12,7 @@ import 'package:rpg/newChar.dart';
 
 final GoogleSignIn _googleSignIn = GoogleSignIn();
 final FirebaseAuth _auth = FirebaseAuth.instance;
-FirebaseUser user;
+
 
 void main() {
   //debugPaintSizeEnabled = true;
@@ -35,6 +35,7 @@ class MyApp extends StatelessWidget {
 }
 
 class LoadingScreen extends StatelessWidget {
+  static FirebaseUser user;
   @override
   Widget build(BuildContext context) {
     Skills();
