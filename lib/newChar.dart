@@ -55,7 +55,6 @@ class _NewCharState extends State<NewChar> {
   }
 
   void submit() {
-    print(stats);
     Firestore.instance.collection('players').document(LoadingScreen.user.uid).setData({
       'new': {
         'name': myController.text,
@@ -63,6 +62,8 @@ class _NewCharState extends State<NewChar> {
         'stats': stats
       }
     });
+
+    Navigator.of(context).pushNamed('/mainMenu');
   }
 
   void _handleRadioValueChange(String value) {

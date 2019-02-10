@@ -8,6 +8,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:rpg/mainmenu.dart';
+import 'package:rpg/battle.dart';
 import 'package:rpg/newChar.dart';
 
 final GoogleSignIn _googleSignIn = GoogleSignIn();
@@ -28,6 +29,7 @@ class MyApp extends StatelessWidget {
       routes: <String, WidgetBuilder> {
         '/mainMenu': (BuildContext context) => new MainMenu(),
         '/newChar': (BuildContext context) => new NewChar(),
+        '/battle': (BuildContext context) => new BattleScreen(),
         // MAKE TEST SCREEN
       },
     );

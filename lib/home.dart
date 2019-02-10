@@ -10,7 +10,12 @@ class _HomeState extends State<Home> {
   Widget build(BuildContext context) {
     // TODO: implement build
     return RaisedButton(
-      child: Text('Home'),
+      child: Text('Battle'),
+      onPressed: toBattle,
     );
+  }
+
+  void toBattle() {
+    Navigator.of(context).pushNamed('/battle');
   }
 }
