@@ -19,7 +19,7 @@ class Inventory extends StatefulWidget {
 class _InventoryState extends State<Inventory> {
   List<Item> items = new List();
   Map<String, Item> itemsDict = new Map(); // Item id, personal item fields
-  Map<String, Map<dynamic, dynamic>> equipment = new Map(); // item name: item fields
+  Map<String, Map<dynamic, dynamic>> allDict = new Map(); // item name: item fields
   Map<dynamic, dynamic> equipped = new Map();
   List<dynamic> skills = new List();
 
@@ -103,7 +103,8 @@ class _InventoryState extends State<Inventory> {
       ));
     }
 
-    return Flexible(
+    return Container(
+      height: 250,
         child: GridView.count(
             crossAxisCount: 5,
             padding: EdgeInsets.all(5.0),
@@ -149,7 +150,8 @@ class _InventoryState extends State<Inventory> {
       ));
     }
 
-    return Flexible(
+    return Container(
+        height: 250.0,
         child: GridView.count(
             crossAxisCount: 5,
             padding: EdgeInsets.all(5.0),
@@ -164,13 +166,13 @@ class _InventoryState extends State<Inventory> {
   Future getInventory() async {
     List<Item> _items = new List();
     Map<String, Item> _itemsDict = new Map();
-    QuerySnapshot result = await Firestore.instance.collection('players').document(LoadingScreen.user.uid).collection('inventory').orderBy('name').getDocuments();
+    QuerySnapshot result = await Firestore.instance.collection('players').document(Data.user.uid).collection('inventory').orderBy('name').getDocuments();
     for (DocumentSnapshot doc in result.documents) {
       Item _item = new Item(doc.documentID, doc.data['lvl'], doc.data['name'], doc.data['properties']);
       _itemsDict[doc.documentID] = _item;
       _items.add(_item);
     }
-    DocumentSnapshot playerData = await Firestore.instance.collection('players').document(LoadingScreen.user.uid).get();
+    DocumentSnapshot playerData = await Firestore.instance.collection('players').document(Data.user.uid).get();
     List<dynamic> _skills = playerData.data['knownSkills'];
 
     setState(() {
@@ -182,7 +184,7 @@ class _InventoryState extends State<Inventory> {
 
   /// Gets the items currently equipped
   Future getEquipped() async {
-    DocumentSnapshot doc = await Firestore.instance.collection('players').document(LoadingScreen.user.uid).get();
+    DocumentSnapshot doc = await Firestore.instance.collection('players').document(Data.user.uid).get();
     equipped = doc.data['equipment'];
   }
 
@@ -190,12 +192,12 @@ class _InventoryState extends State<Inventory> {
   Future<void> pressItem(Item item) async {
     List<Text> text = new List();
 
-    if (!equipment.containsKey(item.name)) {
+    if (!allDict.containsKey(item.name)) {
       DocumentSnapshot doc = await Firestore.instance.collection('equipment').document(item.name).get();
-      equipment[item.name] = doc.data;
+      allDict[item.name] = doc.data;
     }
 
-    Map<dynamic, dynamic> _item = equipment[item.name];
+    Map<dynamic, dynamic> _item = allDict[item.name];
 
     text.add(Text('Level: ' + item.lvl.toString()));
     text.add(Text('Slot: ' + _item['slot'].toString()));
@@ -220,7 +222,7 @@ class _InventoryState extends State<Inventory> {
 
     return showDialog<void>(
       context: context,
-      barrierDismissible: false, // user must tap button!
+      barrierDismissible: true, // user must tap button!
       builder: (BuildContext context) {
         return AlertDialog(
           title: Text(item.name),
@@ -234,15 +236,9 @@ class _InventoryState extends State<Inventory> {
           ),
           actions: <Widget>[
             FlatButton(
-              child: Text('Cancel'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-            FlatButton(
               child: Text('Equip'),
               onPressed: () {
-                setEquip(item);
+                equipItem(item);
                 Navigator.of(context).pop();
               },
             ),
@@ -253,13 +249,95 @@ class _InventoryState extends State<Inventory> {
   }
 
   Future<void> pressSkill(String skill) async {
-    
+    List<Text> text = new List();
+
+    if (!allDict.containsKey(skill)) {
+      DocumentSnapshot doc = await Firestore.instance.collection('skills').document(skill).get();
+      allDict[skill] = doc.data;
+    }
+
+    Map<dynamic, dynamic> _skill = allDict[skill];
+
+    text.add(Text('Damage: ' + _skill['damage'].toString()));
+    text.add(Text('Cooldown: ' + _skill['cooldown'].toString()));
+
+    Text description = Text('\n' + _skill['description'].toString(), style: TextStyle(fontStyle: FontStyle.italic));
+
+    Row row = Row(
+      children: <Widget>[
+        Flexible(child: ListBody(children: text)),
+        Container(child: Icon(Icons.android), alignment: Alignment.centerLeft,)
+      ],
+    );
+
+    String empty(String tempSkill) {
+      if (tempSkill == "")
+        return 'Empty';
+      else
+        return tempSkill;
+    }
+
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: true, // user must tap button!
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Replace skill with ' + skill + '?'),
+          content: SingleChildScrollView(
+              child: Column(
+                children: <Widget>[
+                  row,
+                  description
+                ],
+              )
+          ),
+          actions: <Widget>[
+            FlatButton(
+              child: Text(empty(equipped['skill1'])),
+              onPressed: () {
+                Navigator.of(context).pop();
+                equipSkill(skill, 1);
+              },
+            ),
+            FlatButton(
+              child: Text(empty(equipped['skill2'])),
+              onPressed: () {
+                Navigator.of(context).pop();
+                equipSkill(skill, 2);
+              },
+            ),
+            FlatButton(
+              child: Text(empty(equipped['skill3'])),
+              onPressed: () {
+                Navigator.of(context).pop();
+                equipSkill(skill, 3);
+              },
+            ),
+            FlatButton(
+              child: Text(empty(equipped['skill4'])),
+              onPressed: () {
+                Navigator.of(context).pop();
+                equipSkill(skill, 4);
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 
   /// Adds the item to equipped dict
-  Widget setEquip(Item item) {
-    equipped[equipment[item.name]['slot']] = item.id;
-    Firestore.instance.collection('players').document(LoadingScreen.user.uid).updateData({
+  Widget equipItem(Item item) {
+    equipped[allDict[item.name]['slot']] = item.id;
+    Firestore.instance.collection('players').document(Data.user.uid).updateData({
+      'equipment': equipped
+    });
+  }
+
+  /// equips skill
+  Widget equipSkill(String skill, int skillNum) {
+    equipped['skill' + skillNum.toString()] = skill;
+    Firestore.instance.collection('players').document(Data.user.uid).updateData({
       'equipment': equipped
     });
   }
@@ -276,7 +354,6 @@ class _InventoryState extends State<Inventory> {
       if (itemsDict[equipped[armor]] != null) {
         armorName = itemsDict[equipped[armor]].name;
       }
-
 
       armors.add(GridTile(
         child: Container(
@@ -305,6 +382,11 @@ class _InventoryState extends State<Inventory> {
     }
 
     for (String skill in skillStr) {
+      String skillName = 'Empty';
+      if (equipped[skill] != null && equipped[skill] != "") {
+        skillName = equipped[skill];
+      }
+
       skills.add(GridTile(
         child: Container(
             decoration: BoxDecoration(
@@ -321,10 +403,7 @@ class _InventoryState extends State<Inventory> {
                           child: Icon(Icons.android),
                         ),
                         Expanded(
-                            child: Text('test', textAlign: TextAlign.center)
-                        ),
-                        Expanded(
-                            child: Text('test', textAlign: TextAlign.center)
+                            child: Text(skillName, textAlign: TextAlign.center)
                         )
                       ],
                     )
@@ -339,22 +418,26 @@ class _InventoryState extends State<Inventory> {
         children: <Widget>[
           Container(
             child: Flexible(
-                child: GridView.count(
-                    crossAxisCount: 6,
-                    padding: EdgeInsets.all(5.0),
-                    mainAxisSpacing: 4.0,
-                    crossAxisSpacing: 4.0,
-                    children: armors
+                child: IgnorePointer(
+                    child: GridView.count(
+                        crossAxisCount: 6,
+                        padding: EdgeInsets.all(5.0),
+                        mainAxisSpacing: 4.0,
+                        crossAxisSpacing: 4.0,
+                        children: armors
+                    )
                 )
             )
           ),
           Flexible(
-              child: GridView.count(
-                  crossAxisCount: 4,
-                  padding: EdgeInsets.all(5.0),
-                  mainAxisSpacing: 4.0,
-                  crossAxisSpacing: 4.0,
-                  children: skills
+              child: IgnorePointer(
+                  child: GridView.count(
+                      crossAxisCount: 4,
+                      padding: EdgeInsets.all(5.0),
+                      mainAxisSpacing: 4.0,
+                      crossAxisSpacing: 4.0,
+                      children: skills
+                  )
               )
           )
         ],

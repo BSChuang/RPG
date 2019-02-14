@@ -55,7 +55,7 @@ class _NewCharState extends State<NewChar> {
   }
 
   void submit() {
-    Firestore.instance.collection('players').document(LoadingScreen.user.uid).setData({
+    Firestore.instance.collection('players').document(Data.user.uid).setData({
       'new': {
         'name': myController.text,
         'class': _radioValue,

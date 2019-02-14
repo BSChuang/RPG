@@ -4,6 +4,7 @@ import 'package:rpg/character.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:rpg/main.dart';
 
 class BattleScreen extends StatefulWidget {
   @override
@@ -25,9 +26,6 @@ class _BattleScreenState extends State<BattleScreen>{
   String skillToUseName = "";
   int targetCount = 0;
   List<String> targets = new List();
-
-  String battleID = "";
-  String playerID = "playerID";
 
   int buttonSectionPage = 0;
   String confirmText = "";
@@ -115,7 +113,7 @@ class _BattleScreenState extends State<BattleScreen>{
     }
     return StreamBuilder(
         stream: Firestore.instance.collection('players')
-            .document('playerID')
+            .document(Data.user.uid)
             .snapshots(),
         builder: (context, snapshot) {
           if (!snapshot.hasData) return const Text('Loading...');
@@ -133,11 +131,9 @@ class _BattleScreenState extends State<BattleScreen>{
         });
   }
 
-  void buildBattle(String battleID) {
-    this.battleID = battleID;
-
+  void buildBattle() {
     allyWidget = StreamBuilder(
-        stream: Firestore.instance.collection('battles').document(battleID).collection('allies').snapshots(),
+        stream: Firestore.instance.collection('battles').document(Data.battleID).collection('allies').snapshots(),
         builder: (cont, snap) {
           if (!snap.hasData) return const Text('Loading...');
 
@@ -193,7 +189,7 @@ class _BattleScreenState extends State<BattleScreen>{
     );
 
     enemyWidget = StreamBuilder(
-        stream: Firestore.instance.collection('battles').document(battleID).collection('enemies').snapshots(),
+        stream: Firestore.instance.collection('battles').document(Data.battleID).collection('enemies').snapshots(),
         builder: (cont, snap) {
           if (!snap.hasData) return const Text('Loading...');
 
@@ -310,9 +306,8 @@ class _BattleScreenState extends State<BattleScreen>{
 
   @override
   Widget build(BuildContext context) {
-    //Firestore.instance.collection('skills').document('magic').updateData({'Lightning Bolt': {'effect': "lightning"}});
 
-    buildBattle('ID');
+    buildBattle();
     return MaterialApp(
         title: 'RPG',
         home: Scaffold(
@@ -331,7 +326,7 @@ class _BattleScreenState extends State<BattleScreen>{
   Widget getLog() {
     return StreamBuilder(
         stream: Firestore.instance.collection('battles')
-            .document(battleID)
+            .document(Data.battleID)
             .snapshots(),
         builder: (con, snap) {
           if (!snap.hasData) return const Text('Loading...');
@@ -381,7 +376,7 @@ class _BattleScreenState extends State<BattleScreen>{
   }
 
   void confirm() {
-    Firestore.instance.collection('battles').document(battleID).collection('queue').document(playerID).setData({
+    Firestore.instance.collection('battles').document(Data.battleID).collection('queue').document(Data.user.uid).setData({
       'skill': skillToUseName,
       'targets': targets
     });

@@ -30,14 +30,12 @@ class MyApp extends StatelessWidget {
         '/mainMenu': (BuildContext context) => new MainMenu(),
         '/newChar': (BuildContext context) => new NewChar(),
         '/battle': (BuildContext context) => new BattleScreen(),
-        // MAKE TEST SCREEN
       },
     );
   }
 }
 
 class LoadingScreen extends StatelessWidget {
-  static FirebaseUser user;
   @override
   Widget build(BuildContext context) {
     Skills();
@@ -65,15 +63,20 @@ class LoadingScreen extends StatelessWidget {
         idToken: googleAuth.idToken,
         accessToken: googleAuth.accessToken
     );
-    user = await _auth.signInWithCredential(_credential);
+    Data.user = await _auth.signInWithCredential(_credential);
 
-    DocumentSnapshot docSnap = await Firestore.instance.collection('players').document(user.uid).get();
+    DocumentSnapshot docSnap = await Firestore.instance.collection('players').document(Data.user.uid).get();
     if (docSnap.exists) {
       Navigator.of(context).pushNamed('/mainMenu');
     } else {
       Navigator.of(context).pushNamed('/newChar');
     }
 
-    return user;
+    return Data.user;
   }
+}
+
+class Data {
+  static FirebaseUser user;
+  static String battleID;
 }
