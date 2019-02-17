@@ -13,38 +13,14 @@ class Home extends StatefulWidget {
 }
 
 class _HomeState extends State<Home> {
-  List<dynamic> friends = new List();
-  Map<String, List<String>> friendsData = new Map();
-
-
+  Map<String, List<String>> playerData = new Map();
+  bool ready = false;
   @override
   Widget build(BuildContext context) {
-
-    Widget partyWidget = buildParty();
-    // TODO: implement build
-
-    List<Widget> colList = new List();
-    if (partyWidget != null) {
-      colList.add(partyWidget);
-    }
-
-    colList.add(RaisedButton(
-      child: Text('Invite to Party'),
-      onPressed: openFriends,
-    ));
-    colList.add(RaisedButton(
-      child: Text('Battle'),
-      onPressed: toBattle,
-    ));
-
-    return Column(
-      children: colList
-    );
+    return buildParty();
   }
 
   Widget buildParty() {
-    //DocumentSnapshot doc = await Firestore.instance.collection('players').document(Data.user.uid).get();
-
     return StreamBuilder(
         stream: Firestore.instance.collection('players')
             .document(Data.user.uid)
@@ -52,26 +28,40 @@ class _HomeState extends State<Home> {
         builder: (con, snap) {
           if (!snap.hasData) return const Text('Loading...');
 
-          friends = snap.data['friends'];
+          List<dynamic> friends = snap.data['friends'];
           List<Widget> members = new List();
-          List<dynamic> partyIDs = snap.data['party'];
+          Map<dynamic, dynamic> party = snap.data['party'];
 
-          for (dynamic partyID in partyIDs) {
-            if (!friendsData.containsKey(partyID)) {
-              getFriendInfo(partyID);
+          if (!playerData.containsKey(Data.user.uid)) {
+            getPlayerInfo(Data.user.uid);
+          }
+
+          for (dynamic member in party.keys) {
+            if (!playerData.containsKey(member.toString())) {
+              getPlayerInfo(member.toString());
             }
+          }
 
+          for (dynamic friend in friends) {
+            if (!playerData.containsKey(friend.toString())) {
+              getPlayerInfo(friend.toString());
+            }
+          }
+
+          for (dynamic partyID in party.keys) {
             String name = "";
-            if (friendsData.containsKey(partyID)) {
-              name = friendsData[partyID][0];
+            if (playerData.containsKey(partyID)) {
+              name = playerData[partyID][0];
             }
+
+            Icon icon = (party[partyID] == true ? Icon(Icons.arrow_upward) : Icon(Icons.android));
 
             members.add(GridTile(
               child: Container(
                   decoration: BoxDecoration(
                       border: Border.all(
                           color: Colors.black87,
-                          width: 0.5
+                          width: 1
                       )
                   ),
                   child:Center(
@@ -79,7 +69,7 @@ class _HomeState extends State<Home> {
                           child: Column(
                             children: <Widget>[
                               Expanded(
-                                child: Icon(Icons.android),
+                                child: icon,
                               ),
                               Container(
                                 height: 25,
@@ -92,8 +82,9 @@ class _HomeState extends State<Home> {
               ),
             ));
           }
-          return Container(
-            height: 110.0,
+
+          Widget partyWidget = Container(
+              height: 110.0,
               child: GridView.count(
                   crossAxisCount: 4,
                   padding: EdgeInsets.all(5.0),
@@ -102,35 +93,70 @@ class _HomeState extends State<Home> {
                   children: members
               )
           );
+
+          List<Widget> colList = new List();
+
+          if (partyWidget != null) {
+            colList.add(partyWidget);
+          }
+
+          colList.add(RaisedButton(
+            child: Text('Invite to Party'),
+            onPressed: openFriends,
+          ));
+          colList.add(RaisedButton(
+            child: Text('Party Invites'),
+            onPressed: partyInvites,
+          ));
+          colList.add(RaisedButton(
+            child: Text('Leave Party'),
+            onPressed: leaveParty,
+          ));
+
+          colList.add(RaisedButton(
+            child: Text(!ready ? "Ready" : "Cancel"),
+            onPressed: readyUp,
+          ));
+
+          return Column(
+              children: colList
+          );
         });
+
+
   }
 
   // Gets friend's name and level
-  Future<void> getFriendInfo(String uid) async {
+  Future<void> getPlayerInfo(String uid) async {
     DocumentSnapshot doc = await Firestore.instance.collection('players').document(uid).get();
     List<String> pData = new List();
     pData.add(doc.data['name'].toString());
 
     setState(() {
-      friendsData[uid] = pData;
+      playerData[uid] = pData;
     });
   }
 
   Future<void> openFriends() async {
     List<Widget> friendWidgets = new List();
-    for (dynamic friend in friends) {
+    for (dynamic friend in playerData.keys) {
+      if (friend == Data.user.uid) {
+        continue;
+      }
+
       friendWidgets.add(new Row(
         children: <Widget>[
-          Text(friendsData[friend.toString()][0] + '          '),
+          Text(playerData[friend.toString()][0] + '          '),
           RaisedButton(
             color: Colors.blue,
             child: Text('Invite'),
-            onPressed: inviteToParty,
+            onPressed: () {
+              inviteToParty(friend.toString());
+            },
           )
         ],
       ));
     }
-
     return showDialog<void>(
       context: context,
       barrierDismissible: true, // user must tap button!
@@ -147,11 +173,80 @@ class _HomeState extends State<Home> {
     );
   }
 
-  void inviteToParty() {
+  Future<void> partyInvites() async {
+    DocumentSnapshot doc = await Firestore.instance.collection('players').document(Data.user.uid).get();
+    Map<dynamic, dynamic> invites = doc.data['invites'];
+    List<Widget> widgets = new List();
 
+    for (dynamic invite in invites.keys) {
+
+      widgets.add(new Row(
+        children: <Widget>[
+          Text(playerData[invite.toString()][0] + '          '),
+          RaisedButton(
+            color: Colors.blue,
+            child: Text('Accept'),
+            onPressed: () {
+              acceptInvite(invite.toString());
+            }
+          )
+        ],
+      ));
+    }
+
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: true, // user must tap button!
+      builder: (BuildContext context) {
+        return AlertDialog(
+            title: Text('Invites'),
+            content: SingleChildScrollView(
+                child: Column(
+                  children: widgets,
+                )
+            )
+        );
+      },
+    );
+  }
+
+  void readyUp() {
+    Firestore.instance.collection('players').document(Data.user.uid).updateData({
+      'ready': !ready
+    });
+
+    setState(() {
+      ready = !ready;
+    });
+  }
+
+  void leaveParty() {
+    Firestore.instance.collection('players').document(Data.user.uid).updateData({
+      'acceptInvite': 'leave'
+    });
 
     Scaffold.of(context).showSnackBar(new SnackBar(
-      content: new Text("Sending invite"),
+      content: new Text("Leaving party..."),
+    ));
+  }
+
+  void acceptInvite(String uid) {
+    Firestore.instance.collection('players').document(Data.user.uid).updateData({
+      'acceptInvite': uid
+    });
+
+    Scaffold.of(context).showSnackBar(new SnackBar(
+      content: new Text("Joining party..."),
+    ));
+  }
+
+  void inviteToParty(String uid) {
+    Firestore.instance.collection('players').document(Data.user.uid).updateData({
+      'sendInvite': uid
+    });
+
+    Scaffold.of(context).showSnackBar(new SnackBar(
+      content: new Text("Sending invite..."),
     ));
   }
 
