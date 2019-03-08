@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:rpg/skills.dart';
-import 'package:rpg/character.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:rpg/main.dart';
 import 'package:rpg/battle.dart';
+import 'package:rpg/sprites.dart';
 
 class Home extends StatefulWidget {
   @override
@@ -13,7 +10,7 @@ class Home extends StatefulWidget {
 }
 
 class _HomeState extends State<Home> {
-  Map<String, List<String>> playerData = new Map();
+  Map<String, Map<dynamic, dynamic>> playerData = new Map();
   bool ready = false;
   @override
   Widget build(BuildContext context) {
@@ -22,14 +19,15 @@ class _HomeState extends State<Home> {
 
   Widget buildParty() {
     return StreamBuilder(
-        stream: Firestore.instance.collection('players')
+        stream: Firestore.instance
+            .collection('players')
             .document(Data.user.uid)
             .snapshots(),
         builder: (con, snap) {
           if (!snap.hasData) return const Text('Loading...');
 
           List<dynamic> friends = snap.data['friends'];
-          List<Widget> members = new List();
+
           Map<dynamic, dynamic> party = snap.data['party'];
 
           if (!playerData.containsKey(Data.user.uid)) {
@@ -48,57 +46,47 @@ class _HomeState extends State<Home> {
             }
           }
 
+          List<Widget> partyRowWidgets = new List();
+          Row partyRow = new Row();
+          List<Widget> partyColumn = new List();
+          int partyLength = 0;
           for (dynamic partyID in party.keys) {
-            String name = "";
+            partyLength++;
             if (playerData.containsKey(partyID)) {
-              name = playerData[partyID][0];
+              Text nameText = Text(playerData[partyID]['name']);
+
+              if (party[partyID]) {
+                nameText = Text(playerData[partyID]['name'],
+                    style: TextStyle(
+                        fontStyle: FontStyle.italic,
+                        fontWeight: FontWeight.bold));
+              }
+              Widget character =
+                  Sprites.makeSprite(playerData[partyID]['anim']['idle'], 50);
+
+              Widget playerWidget = Container(
+                  margin: EdgeInsets.all(10),
+                  padding: EdgeInsets.all(10),
+                  child: Column(
+                    children: <Widget>[character, nameText],
+                  ));
+
+              partyRowWidgets.add(playerWidget);
+              if (partyRowWidgets.length == 4 || partyLength == party.length) {
+                partyRow = new Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: partyRowWidgets);
+                partyColumn.add(partyRow);
+              }
             }
-
-            Icon icon = (party[partyID] == true ? Icon(Icons.arrow_upward) : Icon(Icons.android));
-
-            members.add(GridTile(
-              child: Container(
-                  decoration: BoxDecoration(
-                      border: Border.all(
-                          color: Colors.black87,
-                          width: 1
-                      )
-                  ),
-                  child:Center(
-                      child: Container(
-                          child: Column(
-                            children: <Widget>[
-                              Expanded(
-                                child: icon,
-                              ),
-                              Container(
-                                height: 25,
-                                  child: Text(name, textAlign: TextAlign.center)
-                              ),
-                            ],
-                          )
-                      )
-                  )
-              ),
-            ));
           }
 
-          Widget partyWidget = Container(
-              height: 110.0,
-              child: GridView.count(
-                  crossAxisCount: 4,
-                  padding: EdgeInsets.all(5.0),
-                  mainAxisSpacing: 4.0,
-                  crossAxisSpacing: 4.0,
-                  children: members
-              )
+          Widget partyWidget = Column(
+            children: partyColumn,
           );
 
           List<Widget> colList = new List();
-
-          if (partyWidget != null) {
-            colList.add(partyWidget);
-          }
 
           colList.add(RaisedButton(
             child: Text('Invite to Party'),
@@ -115,25 +103,24 @@ class _HomeState extends State<Home> {
 
           colList.add(RaisedButton(
             child: Text(!ready ? "Ready" : "Cancel"),
-            onPressed: readyUp,
+            onPressed: toBattle,
           ));
 
-          return Column(
-              children: colList
-          );
+          if (partyWidget != null) {
+            colList.add(partyWidget);
+          }
+
+          return Column(children: colList);
         });
-
-
   }
 
   // Gets friend's name and level
   Future<void> getPlayerInfo(String uid) async {
-    DocumentSnapshot doc = await Firestore.instance.collection('players').document(uid).get();
-    List<String> pData = new List();
-    pData.add(doc.data['name'].toString());
+    DocumentSnapshot doc =
+        await Firestore.instance.collection('players').document(uid).get();
 
     setState(() {
-      playerData[uid] = pData;
+      playerData[uid] = doc.data;
     });
   }
 
@@ -146,7 +133,7 @@ class _HomeState extends State<Home> {
 
       friendWidgets.add(new Row(
         children: <Widget>[
-          Text(playerData[friend.toString()][0] + '          '),
+          Text(playerData[friend.toString()]['name'] + '          '),
           RaisedButton(
             color: Colors.blue,
             child: Text('Invite'),
@@ -162,34 +149,33 @@ class _HomeState extends State<Home> {
       barrierDismissible: true, // user must tap button!
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Friends'),
-          content: SingleChildScrollView(
-              child: Column(
-                children: friendWidgets,
-              )
-          )
-        );
+            title: Text('Friends'),
+            content: SingleChildScrollView(
+                child: Column(
+              children: friendWidgets,
+            )));
       },
     );
   }
 
   Future<void> partyInvites() async {
-    DocumentSnapshot doc = await Firestore.instance.collection('players').document(Data.user.uid).get();
+    DocumentSnapshot doc = await Firestore.instance
+        .collection('players')
+        .document(Data.user.uid)
+        .get();
     Map<dynamic, dynamic> invites = doc.data['invites'];
     List<Widget> widgets = new List();
 
     for (dynamic invite in invites.keys) {
-
       widgets.add(new Row(
         children: <Widget>[
-          Text(playerData[invite.toString()][0] + '          '),
+          Text(playerData[invite.toString()]['name'] + '          '),
           RaisedButton(
-            color: Colors.blue,
-            child: Text('Accept'),
-            onPressed: () {
-              acceptInvite(invite.toString());
-            }
-          )
+              color: Colors.blue,
+              child: Text('Accept'),
+              onPressed: () {
+                acceptInvite(invite.toString());
+              })
         ],
       ));
     }
@@ -202,18 +188,17 @@ class _HomeState extends State<Home> {
             title: Text('Invites'),
             content: SingleChildScrollView(
                 child: Column(
-                  children: widgets,
-                )
-            )
-        );
+              children: widgets,
+            )));
       },
     );
   }
 
   void readyUp() {
-    Firestore.instance.collection('players').document(Data.user.uid).updateData({
-      'ready': !ready
-    });
+    Firestore.instance
+        .collection('players')
+        .document(Data.user.uid)
+        .updateData({'ready': !ready});
 
     setState(() {
       ready = !ready;
@@ -221,9 +206,10 @@ class _HomeState extends State<Home> {
   }
 
   void leaveParty() {
-    Firestore.instance.collection('players').document(Data.user.uid).updateData({
-      'acceptInvite': 'leave'
-    });
+    Firestore.instance
+        .collection('players')
+        .document(Data.user.uid)
+        .updateData({'acceptInvite': 'leave'});
 
     Scaffold.of(context).showSnackBar(new SnackBar(
       content: new Text("Leaving party..."),
@@ -231,9 +217,10 @@ class _HomeState extends State<Home> {
   }
 
   void acceptInvite(String uid) {
-    Firestore.instance.collection('players').document(Data.user.uid).updateData({
-      'acceptInvite': uid
-    });
+    Firestore.instance
+        .collection('players')
+        .document(Data.user.uid)
+        .updateData({'acceptInvite': uid});
 
     Scaffold.of(context).showSnackBar(new SnackBar(
       content: new Text("Joining party..."),
@@ -241,9 +228,10 @@ class _HomeState extends State<Home> {
   }
 
   void inviteToParty(String uid) {
-    Firestore.instance.collection('players').document(Data.user.uid).updateData({
-      'sendInvite': uid
-    });
+    Firestore.instance
+        .collection('players')
+        .document(Data.user.uid)
+        .updateData({'sendInvite': uid});
 
     Scaffold.of(context).showSnackBar(new SnackBar(
       content: new Text("Sending invite..."),
@@ -251,15 +239,14 @@ class _HomeState extends State<Home> {
   }
 
   Future toBattle() async {
-    DocumentSnapshot playerData = await Firestore.instance.collection('players').document(Data.user.uid).get();
-    if (playerData.data['currentBattle'] != null) {
-      Data.battleID = playerData.data['currentBattle'];
+    DocumentSnapshot data = await Firestore.instance
+        .collection('players')
+        .document(Data.user.uid)
+        .get();
+    if (data.data['currentBattle'] != null) {
+      Data.battleID = data.data['currentBattle'];
       Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => BattleScreen())
-      );
-    } else {
-
-    }
+          context, MaterialPageRoute(builder: (context) => BattleScreen()));
+    } else {}
   }
 }

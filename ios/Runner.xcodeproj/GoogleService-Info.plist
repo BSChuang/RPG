@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>AD_UNIT_ID_FOR_BANNER_TEST</key>
+	<string>ca-app-pub-3940256099942544/2934735716</string>
+	<key>AD_UNIT_ID_FOR_INTERSTITIAL_TEST</key>
+	<string>ca-app-pub-3940256099942544/4411468910</string>
+	<key>CLIENT_ID</key>
+	<string>995248184590-fglg2ifq0ar6bo7r1p5i7dp2r5e7fvto.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.995248184590-fglg2ifq0ar6bo7r1p5i7dp2r5e7fvto</string>
+	<key>API_KEY</key>
+	<string>AIzaSyBuogCpD5_nZV0XmJFh9Ji9hAN4spq2E98</string>
+	<key>GCM_SENDER_ID</key>
+	<string>995248184590</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.aurorastudios.rpg</string>
+	<key>PROJECT_ID</key>
+	<string>mmorpg-2456c</string>
+	<key>STORAGE_BUCKET</key>
+	<string>mmorpg-2456c.appspot.com</string>
+	<key>IS_ADS_ENABLED</key>
+	<true></true>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<false></false>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:995248184590:ios:9e074bd3244c904f</string>
+	<key>DATABASE_URL</key>
+	<string>https://mmorpg-2456c.firebaseio.com</string>
+</dict>
+</plist>

@@ -17,8 +17,7 @@ class Inventory extends StatefulWidget {
 }
 
 class _InventoryState extends State<Inventory> {
-  List<Item> items = new List();
-  Map<String, Item> itemsDict = new Map(); // Item id, personal item fields
+  Map<String, Item> inventory = new Map(); // Item id, personal item fields
   Map<String, Map<dynamic, dynamic>> allDict = new Map(); // item name: item fields
   Map<dynamic, dynamic> equipped = new Map();
   List<dynamic> skills = new List();
@@ -118,9 +117,14 @@ class _InventoryState extends State<Inventory> {
   /// Builds a clickable box for each item, then places them in a grid
   Widget buildItemsWidget() {
     List<GridTile> tiles = new List();
-    for (Item item in items) {
+    for (Item item in inventory.values) {
+      Widget image;
+      if (allDict.containsKey(item.name) && item.sprite != null) {
+        image = Image(fit: BoxFit.none, image: new AssetImage('assets/sprites/' + allDict[item.name]['sprite']));
+      } else {
+        image = Icon(Icons.android);
+      }
       tiles.add(GridTile(
-
         child: Container(
             decoration: BoxDecoration(
                 border: Border.all(
@@ -135,7 +139,7 @@ class _InventoryState extends State<Inventory> {
                         child: Column(
                           children: <Widget>[
                             Expanded(
-                              child: Icon(Icons.android),
+                              child: image,
                             ),
                             Expanded(
                                 child: Text(item.name, textAlign: TextAlign.center)
@@ -164,20 +168,31 @@ class _InventoryState extends State<Inventory> {
 
   /// Gets the specific data from the inventory items. Adds the data to items dict and items list
   Future getInventory() async {
-    List<Item> _items = new List();
-    Map<String, Item> _itemsDict = new Map();
-    QuerySnapshot result = await Firestore.instance.collection('players').document(Data.user.uid).collection('inventory').orderBy('name').getDocuments();
+    Map<String, Item> _inventory = new Map();
+    QuerySnapshot result = await Firestore.instance.collection('players').document(Data.user.uid).collection('inventory').orderBy('lvl').getDocuments();
     for (DocumentSnapshot doc in result.documents) {
-      Item _item = new Item(doc.documentID, doc.data['lvl'], doc.data['name'], doc.data['properties']);
-      _itemsDict[doc.documentID] = _item;
-      _items.add(_item);
+      Item _item;
+      String _name = doc.data['name'];
+
+      if (!allDict.containsKey(doc.data['name'])) {
+        DocumentSnapshot _itemDoc = await Firestore.instance.collection('equipment').document(doc.data['name']).get();
+        allDict[_name] = _itemDoc.data;
+      }
+
+      if (allDict[_name]['slot'] == 'weapon') {
+        _item = new Item.weapon(doc.documentID, doc.data['lvl'], doc.data['name'], doc.data['properties'], allDict[_name]['stat'], allDict[_name]['sprite'], allDict[_name]['damage'],
+            allDict[_name]['critChance'], allDict[_name]['critDamage'], allDict[_name]['description']);
+      } else {
+        _item = new Item.armor(doc.documentID, doc.data['lvl'], doc.data['name'], doc.data['properties'], allDict[_name]['slot'], allDict[_name]['stat'], allDict[_name]['sprite'],
+            allDict[_name]['armor'], allDict[_name]['description']);
+      }
+      _inventory[doc.documentID] = _item;
     }
     DocumentSnapshot playerData = await Firestore.instance.collection('players').document(Data.user.uid).get();
     List<dynamic> _skills = playerData.data['knownSkills'];
 
     setState(() {
-      items = _items;
-      itemsDict = _itemsDict;
+      inventory = _inventory;
       skills = _skills;
     });
   }
@@ -351,8 +366,10 @@ class _InventoryState extends State<Inventory> {
 
     for (String armor in armorStr) {
       String armorName = "Empty";
-      if (itemsDict[equipped[armor]] != null) {
-        armorName = itemsDict[equipped[armor]].name;
+      Image sprite;
+      if (inventory[equipped[armor]] != null) {
+        armorName = inventory[equipped[armor]].name;
+        sprite = Image(fit: BoxFit.none, image: new AssetImage('assets/sprites/' + allDict[inventory[equipped[armor]].name]['sprite']));
       }
 
       armors.add(GridTile(
@@ -368,7 +385,7 @@ class _InventoryState extends State<Inventory> {
                     child: Column(
                       children: <Widget>[
                         Expanded(
-                          child: Icon(Icons.android),
+                          child: sprite,
                         ),
                         Expanded(
                             child: Text(armorName, textAlign: TextAlign.center)
@@ -450,6 +467,17 @@ class Item {
   String id;
   int lvl;
   String name;
+  String description;
+  String slot;
+  String sprite;
+  String stat;
+
+  int armor;
+
+  int damage;
+  int critChance;
+  int critDamage;
+
   Map<dynamic, dynamic> properties;
 
   Item(String id, int lvl, String name, Map<dynamic, dynamic> properties) {
@@ -457,5 +485,46 @@ class Item {
     this.lvl = lvl;
     this.name = name;
     this.properties = properties;
+  }
+
+  Item.armor(String id, int lvl, String name, Map<dynamic, dynamic> properties, String slot, String stat, String sprite, int armor, String description) {
+    this.id = id;
+    this.lvl = lvl;
+    this.name = name;
+    this.stat = stat;
+    this.slot = slot;
+    this.sprite = sprite;
+    this.properties = properties;
+    this.armor = armor;
+    this.slot = slot;
+    this.description = description;
+  }
+
+  Item.weapon(String id, int lvl, String name, Map<dynamic, dynamic> properties, String stat, String sprite, int damage, int critChance, int critDamage, String description) {
+    this.id = id;
+    this.lvl = lvl;
+    this.name = name;
+    this.stat = stat;
+    this.slot = slot;
+    this.sprite = sprite;
+    this.properties = properties;
+    this.armor = armor;
+    this.damage = damage;
+    this.critChance = critChance;
+    this.critDamage = critDamage;
+    this.slot = 'weapon';
+    this.description = description;
+  }
+
+  void setArmor(int armor, String slot) {
+    this.armor = armor;
+    this.slot = slot;
+  }
+
+  void setWeapon(int damage, int critChance, int critDamage) {
+    this.damage = damage;
+    this.critChance = critChance;
+    this.critDamage = critDamage;
+    this.slot = 'weapon';
   }
 }

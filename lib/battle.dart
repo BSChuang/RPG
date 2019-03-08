@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:rpg/skills.dart';
-import 'package:rpg/character.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:rpg/main.dart';
+import 'package:rpg/sprites.dart';
 
 class BattleScreen extends StatefulWidget {
   @override
@@ -173,7 +171,7 @@ class _BattleScreenState extends State<BattleScreen>{
                         decoration: BoxDecoration(
                             border: Border.all(width: 3, color: unitBorder[unit.documentID])
                         ),
-                        child: Image(fit: BoxFit.none, image: new AssetImage('assets/sprite_gifs/knight_idle.gif'))
+                        child: Sprites.makeSprite(unit['anim']['idle'], 50)
                     )
                 )
               ],
@@ -196,7 +194,6 @@ class _BattleScreenState extends State<BattleScreen>{
           List<Row> unitWidgets = new List();
           enemiesID.clear();
 
-          //print(snap.data.documents);
           for (DocumentSnapshot unit in snap.data.documents) {
             units[unit.documentID] = unit.data;
             enemiesID.add(unit.documentID);
@@ -218,7 +215,7 @@ class _BattleScreenState extends State<BattleScreen>{
                             border: Border.all(width: 3, color: unitBorder[unit.documentID])
                         ),
 
-                        child: Image(fit: BoxFit.none, image: new AssetImage('assets/sprite_gifs/' + unit['anim']['idle']))
+                        child: Icon(Icons.image)//Sprites.makeSprite(unit['anim']['idle'], 50)//
                     )
                 ),
                 Container(
