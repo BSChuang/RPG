@@ -48,7 +48,6 @@ flutter:
   assets:
    - assets/sprite_gifs/
    - assets/sprites/
-   - assets/sprite_sheets/
    - assets/images/
 
 

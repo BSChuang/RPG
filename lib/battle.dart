@@ -310,7 +310,7 @@ class _BattleScreenState extends State<BattleScreen>{
         home: Scaffold(
           backgroundColor: Colors.white,
           body:
-          ListView(
+          Column(
             children: [
               battleSection,
               buttonSection,
