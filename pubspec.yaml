@@ -15,7 +15,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  flame: ^0.10.2
+  flame: ^0.10.1
   firebase_core: ^0.3.1+1
   cloud_firestore: ^0.9.5
   firebase_analytics: ^2.0.0
@@ -48,6 +48,7 @@ flutter:
    - assets/sprite_gifs/
    - assets/sprites/
    - assets/images/
+   - assets/spritesheets/
 
 
   # An image asset can refer to one or more resolution-specific "variants", see

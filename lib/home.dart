@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:rpg/main.dart';
 import 'package:rpg/battle.dart';
 import 'package:rpg/sprites.dart';
+import 'package:flutter/material.dart';
 
 class Home extends StatefulWidget {
   @override
@@ -11,6 +12,7 @@ class Home extends StatefulWidget {
 
 class _HomeState extends State<Home> {
   Map<String, Map<dynamic, dynamic>> playerData = new Map();
+  Map<dynamic, dynamic> party;
   bool ready = false;
   @override
   Widget build(BuildContext context) {
@@ -28,7 +30,7 @@ class _HomeState extends State<Home> {
 
           List<dynamic> friends = snap.data['friends'];
 
-          Map<dynamic, dynamic> party = snap.data['party'];
+          party = snap.data['party'];
 
           if (!playerData.containsKey(Data.user.uid)) {
             getPlayerInfo(Data.user.uid);
@@ -46,72 +48,102 @@ class _HomeState extends State<Home> {
             }
           }
 
-          List<Widget> partyRowWidgets = new List();
-          Row partyRow = new Row();
-          List<Widget> partyColumn = new List();
-          int partyLength = 0;
-          for (dynamic partyID in party.keys) {
-            partyLength++;
-            if (playerData.containsKey(partyID)) {
-              Text nameText = Text(playerData[partyID]['name']);
+          List<Widget> colList = partyButtons();
 
-              if (party[partyID]) {
-                nameText = Text(playerData[partyID]['name'],
-                    style: TextStyle(
-                        fontStyle: FontStyle.italic,
-                        fontWeight: FontWeight.bold));
-              }
-              Widget character =
-                  Sprites.makeSprite(playerData[partyID]['anim']['idle'], 50);
-
-              Widget playerWidget = Container(
-                  margin: EdgeInsets.all(10),
-                  padding: EdgeInsets.all(10),
-                  child: Column(
-                    children: <Widget>[character, nameText],
-                  ));
-
-              partyRowWidgets.add(playerWidget);
-              if (partyRowWidgets.length == 4 || partyLength == party.length) {
-                partyRow = new Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    children: partyRowWidgets);
-                partyColumn.add(partyRow);
-              }
-            }
-          }
-
-          Widget partyWidget = Column(
-            children: partyColumn,
-          );
-
-          List<Widget> colList = new List();
-
-          colList.add(RaisedButton(
-            child: Text('Invite to Party'),
-            onPressed: openFriends,
-          ));
-          colList.add(RaisedButton(
-            child: Text('Party Invites'),
-            onPressed: partyInvites,
-          ));
-          colList.add(RaisedButton(
-            child: Text('Leave Party'),
-            onPressed: leaveParty,
-          ));
-
-          colList.add(RaisedButton(
-            child: Text(!ready ? "Ready" : "Cancel"),
-            onPressed: toBattle,
-          ));
+          Widget partyWidget = buildCharacters();
 
           if (partyWidget != null) {
             colList.add(partyWidget);
           }
 
-          return Column(children: colList);
+          return Center(
+              child: Column(
+                  children: colList,
+                  crossAxisAlignment: CrossAxisAlignment.center));
         });
+  }
+
+  List<Widget> partyButtons() {
+    print("here");
+    List<Widget> colList = new List<Widget>();
+
+    Widget invite = MaterialButton(
+      child: Text('Friends'),
+      onPressed: openFriends,
+      color: Colors.white10,
+      height: 40,
+      minWidth: 100,
+    );
+    Widget invites = MaterialButton(
+      child: Text('Party Invites'),
+      onPressed: partyInvites,
+      color: Colors.white10,
+      height: 40,
+      minWidth: 100,
+    );
+    Widget leave = MaterialButton(
+      child: Text('Leave Party'),
+      onPressed: leaveParty,
+      color: Colors.white10,
+      height: 40,
+      minWidth: 100,
+    );
+
+    colList.add(new Container(height: 25));
+
+    colList.add(Row(children: <Widget>[invite, invites, leave], mainAxisAlignment: MainAxisAlignment.spaceEvenly));
+
+    colList.add(MaterialButton(
+      child: Text(!ready ? "Ready" : "Cancel"),
+      onPressed: toBattle,
+      color: Colors.white10,
+      height: 40,
+      minWidth: 60,
+    ));
+
+    return colList;
+  }
+
+  Widget buildCharacters() {
+    List<Widget> partyRowList = new List();
+    List<Widget> partyColumnList = new List();
+    Row partyRow = new Row();
+    int partyLength = 0;
+
+    if (playerData.containsKey(Data.user.uid)) {
+      // build player character first
+      Widget character =
+          Sprites.makeSprite(playerData[Data.user.uid]['anim']['idle'], 100);
+      partyColumnList.add(character);
+    }
+
+    for (dynamic partyID in party.keys) {
+      // build everyone else
+      if (partyID == Data.user.uid) {
+        continue;
+      }
+
+      partyLength++;
+      if (playerData.containsKey(partyID)) {
+        Widget character = Sprites.makeSprite(
+            playerData[partyID]['anim']['idle'], 75.0 - 2 * party.length);
+
+        partyRowList.add(character);
+        if (partyRowList.length == 4 || partyLength == party.length) {
+          partyRow = new Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: partyRowList);
+          partyColumnList.add(partyRow);
+        }
+      }
+    }
+
+    return Container(
+        child: Column(
+            children: partyColumnList,
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center));
   }
 
   // Gets friend's name and level
@@ -245,8 +277,9 @@ class _HomeState extends State<Home> {
         .get();
     if (data.data['currentBattle'] != null) {
       Data.battleID = data.data['currentBattle'];
-      Navigator.push(
-          context, MaterialPageRoute(builder: (context) => BattleScreen()));
-    } else {}
+    } else {
+      //Navigator.push(
+      //context, MaterialPageRoute(builder: (context) => BattleScreen()));
+    }
   }
 }
