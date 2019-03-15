@@ -16,92 +16,106 @@ class _HomeState extends State<Home> {
   bool ready = false;
   @override
   Widget build(BuildContext context) {
-    return buildParty();
+    return Container(
+        decoration: BoxDecoration(
+            image: DecorationImage(
+                image: AssetImage("assets/images/backgrounds/airadventurelevel3.png"),
+                fit: BoxFit.cover)),
+        child: Scaffold(
+            backgroundColor: Colors.transparent,
+            body: SafeArea(
+                child: StreamBuilder(
+                    stream: Firestore.instance
+                        .collection('players')
+                        .document(Data.user.uid)
+                        .snapshots(),
+                    builder: (con, snap) => buildHome(snap)))));
   }
 
-  Widget buildParty() {
-    return StreamBuilder(
-        stream: Firestore.instance
-            .collection('players')
-            .document(Data.user.uid)
-            .snapshots(),
-        builder: (con, snap) {
-          if (!snap.hasData) return const Text('Loading...');
+  Widget buildHome(AsyncSnapshot snap) {
+    DocumentSnapshot data = snap.data;
+    if (!snap.hasData) return const Text('Loading...');
 
-          List<dynamic> friends = snap.data['friends'];
+    List<dynamic> friends = data['friends'];
 
-          party = snap.data['party'];
+    party = data['party'];
 
-          if (!playerData.containsKey(Data.user.uid)) {
-            getPlayerInfo(Data.user.uid);
-          }
+    if (!playerData.containsKey(Data.user.uid)) {
+      getPlayerInfo(Data.user.uid);
+    }
 
-          for (dynamic member in party.keys) {
-            if (!playerData.containsKey(member.toString())) {
-              getPlayerInfo(member.toString());
-            }
-          }
+    for (dynamic member in party.keys) {
+      if (!playerData.containsKey(member.toString())) {
+        getPlayerInfo(member.toString());
+      }
+    }
 
-          for (dynamic friend in friends) {
-            if (!playerData.containsKey(friend.toString())) {
-              getPlayerInfo(friend.toString());
-            }
-          }
+    for (dynamic friend in friends) {
+      if (!playerData.containsKey(friend.toString())) {
+        getPlayerInfo(friend.toString());
+      }
+    }
 
-          List<Widget> colList = partyButtons();
+    List<Widget> colList = new List();
 
-          Widget partyWidget = buildCharacters();
+    colList.add(buildHeader(data));
 
-          if (partyWidget != null) {
-            colList.add(partyWidget);
-          }
+    colList.add(partyButtons());
 
-          return Center(
-              child: Column(
-                  children: colList,
-                  crossAxisAlignment: CrossAxisAlignment.center));
-        });
+    Widget partyWidget = buildCharacters();
+    if (partyWidget != null) {
+      colList.add(partyWidget);
+    }
+
+    return Center(
+        child: Column(
+            children: colList, crossAxisAlignment: CrossAxisAlignment.center));
   }
 
-  List<Widget> partyButtons() {
-    print("here");
-    List<Widget> colList = new List<Widget>();
+  Widget buildHeader(DocumentSnapshot data) {
+    Text name = Text(data['name']);
+    Text gold = Text("Gold: " + data['gold'].toString());
 
-    Widget invite = MaterialButton(
+    Row row = new Row(
+      children: <Widget>[name, gold],
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    );
+
+    return Container(child: row, height: 25, color: Colors.black26);
+  }
+
+  Widget partyButtons() {
+    List<Widget> list = new List<Widget>();
+
+    Widget invite = FlatButton(
       child: Text('Friends'),
       onPressed: openFriends,
-      color: Colors.white10,
-      height: 40,
-      minWidth: 100,
+      color: Colors.white70,
     );
-    Widget invites = MaterialButton(
+    Widget invites = FlatButton(
       child: Text('Party Invites'),
       onPressed: partyInvites,
-      color: Colors.white10,
-      height: 40,
-      minWidth: 100,
+      color: Colors.white70,
     );
-    Widget leave = MaterialButton(
+    Widget leave = FlatButton(
       child: Text('Leave Party'),
       onPressed: leaveParty,
-      color: Colors.white10,
-      height: 40,
-      minWidth: 100,
+      color: Colors.white70,
     );
 
-    colList.add(new Container(height: 25));
+    list.add(new Container(height: 25));
 
-    colList.add(Row(children: <Widget>[invite, invites, leave], mainAxisAlignment: MainAxisAlignment.spaceEvenly));
+    list.add(Row(
+        children: <Widget>[invite, invites, leave],
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly));
 
-    colList.add(MaterialButton(
+    list.add(FlatButton(
       child: Text(!ready ? "Ready" : "Cancel"),
       onPressed: toBattle,
-      color: Colors.white10,
-      height: 40,
-      minWidth: 60,
+      color: Colors.white70,
     ));
 
-    return colList;
+    return Column(children: list);
   }
 
   Widget buildCharacters() {
