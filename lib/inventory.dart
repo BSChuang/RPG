@@ -27,7 +27,7 @@ class _InventoryState extends State<Inventory> {
         decoration: BoxDecoration(
             image: DecorationImage(
                 image: AssetImage(
-                    "assets/images/backgrounds/airadventurelevel3.png"),
+                    "assets/images/backgrounds/airadventurelevel1.png"),
                 fit: BoxFit.cover)),
         child: Scaffold(
           backgroundColor: Colors.transparent,

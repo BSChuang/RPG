@@ -111,7 +111,7 @@ class _HomeState extends State<Home> {
 
     list.add(FlatButton(
       child: Text(!ready ? "Ready" : "Cancel"),
-      onPressed: toBattle,
+      onPressed: readyUp,
       color: Colors.white70,
     ));
 
