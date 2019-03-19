@@ -14,12 +14,14 @@ class _HomeState extends State<Home> {
   Map<String, Map<dynamic, dynamic>> playerData = new Map();
   Map<dynamic, dynamic> party;
   bool ready = false;
+  bool allReady = false;
   @override
   Widget build(BuildContext context) {
     return Container(
         decoration: BoxDecoration(
             image: DecorationImage(
-                image: AssetImage("assets/images/backgrounds/airadventurelevel3.png"),
+                image: AssetImage(
+                    "assets/images/backgrounds/airadventurelevel3.png"),
                 fit: BoxFit.cover)),
         child: Scaffold(
             backgroundColor: Colors.transparent,
@@ -33,9 +35,13 @@ class _HomeState extends State<Home> {
   }
 
   Widget buildHome(AsyncSnapshot snap) {
-    DocumentSnapshot data = snap.data;
-    if (!snap.hasData) return const Text('Loading...');
-
+    DocumentSnapshot _temp = snap.data;
+    Map<String, dynamic> data;
+    if (!snap.hasData) {
+      return Text('Loading...');
+    } else {
+      data = _temp.data;
+    }
     List<dynamic> friends = data['friends'];
 
     party = data['party'];
@@ -45,9 +51,10 @@ class _HomeState extends State<Home> {
     }
 
     for (dynamic member in party.keys) {
-      if (!playerData.containsKey(member.toString())) {
+      getPlayerInfo(member.toString());
+      /* if (!playerData.containsKey(member.toString())) {
         getPlayerInfo(member.toString());
-      }
+      } */
     }
 
     for (dynamic friend in friends) {
@@ -60,7 +67,7 @@ class _HomeState extends State<Home> {
 
     colList.add(buildHeader(data));
 
-    colList.add(partyButtons());
+    colList.add(partyButtons(data));
 
     Widget partyWidget = buildCharacters();
     if (partyWidget != null) {
@@ -72,7 +79,7 @@ class _HomeState extends State<Home> {
             children: colList, crossAxisAlignment: CrossAxisAlignment.center));
   }
 
-  Widget buildHeader(DocumentSnapshot data) {
+  Widget buildHeader(Map<String, dynamic> data) {
     Text name = Text(data['name']);
     Text gold = Text("Gold: " + data['gold'].toString());
 
@@ -84,36 +91,40 @@ class _HomeState extends State<Home> {
     return Container(child: row, height: 25, color: Colors.black26);
   }
 
-  Widget partyButtons() {
+  Widget partyButtons(Map<String, dynamic> data) {
     List<Widget> list = new List<Widget>();
-
-    Widget invite = FlatButton(
-      child: Text('Friends'),
-      onPressed: openFriends,
-      color: Colors.white70,
-    );
-    Widget invites = FlatButton(
-      child: Text('Party Invites'),
-      onPressed: partyInvites,
-      color: Colors.white70,
-    );
-    Widget leave = FlatButton(
-      child: Text('Leave Party'),
-      onPressed: leaveParty,
-      color: Colors.white70,
-    );
-
     list.add(new Container(height: 25));
 
-    list.add(Row(
-        children: <Widget>[invite, invites, leave],
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly));
+    list.add(Row(children: <Widget>[
+      FlatButton(
+        child: Text('Friends'),
+        onPressed: allReady ? null : openFriends,
+        color: Colors.white70,
+      ),
+      FlatButton(
+        child: Text('Party Invites'),
+        onPressed: allReady ? null : partyInvites,
+        color: Colors.white70,
+      ),
+      FlatButton(
+        child: Text('Leave Party'),
+        onPressed: allReady ? null : leaveParty,
+        color: Colors.white70,
+      )
+    ], mainAxisAlignment: MainAxisAlignment.spaceEvenly));
 
-    list.add(FlatButton(
-      child: Text(!ready ? "Ready" : "Cancel"),
-      onPressed: readyUp,
-      color: Colors.white70,
-    ));
+    list.add(Row(children: <Widget>[
+      FlatButton(
+        child: Text(!ready ? "Ready" : "Cancel"),
+        onPressed: allReady ? null : readyUp,
+        color: Colors.white70,
+      ),
+      FlatButton(
+        child: Text("To battle"),
+        onPressed: (data['currentBattle'] == "") ? null : toBattle,
+        color: Colors.white70,
+      )
+    ], mainAxisAlignment: MainAxisAlignment.center));
 
     return Column(children: list);
   }
@@ -165,8 +176,17 @@ class _HomeState extends State<Home> {
     DocumentSnapshot doc =
         await Firestore.instance.collection('players').document(uid).get();
 
+    bool _allReady = true;
+    for (String uid in party.keys) {
+      if (playerData.containsKey(uid) && !playerData[uid]['ready']) {
+        _allReady = false;
+        break;
+      }
+    }
+
     setState(() {
       playerData[uid] = doc.data;
+      allReady = _allReady;
     });
   }
 
@@ -289,11 +309,8 @@ class _HomeState extends State<Home> {
         .collection('players')
         .document(Data.user.uid)
         .get();
-    if (data.data['currentBattle'] != null) {
-      Data.battleID = data.data['currentBattle'];
-    } else {
-      //Navigator.push(
-      //context, MaterialPageRoute(builder: (context) => BattleScreen()));
-    }
+    Data.battleID = data.data['currentBattle'];
+    Navigator.push(
+        context, MaterialPageRoute(builder: (context) => Battle()));
   }
 }

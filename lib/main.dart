@@ -30,7 +30,6 @@ class MyApp extends StatelessWidget {
       routes: <String, WidgetBuilder>{
         '/mainMenu': (BuildContext context) => new MainMenu(),
         '/newChar': (BuildContext context) => new NewChar(),
-        '/battle': (BuildContext context) => new BattleScreen(),
       },
       debugShowCheckedModeBanner: false,
     );

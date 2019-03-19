@@ -3,432 +3,456 @@ import 'package:rpg/skills.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:rpg/main.dart';
 import 'package:rpg/sprites.dart';
+import 'dart:math';
 
-class BattleScreen extends StatefulWidget {
+class Battle extends StatefulWidget {
   @override
-  _BattleScreenState createState() => new _BattleScreenState();
+  _BattleState createState() => new _BattleState();
 }
 
-class _BattleScreenState extends State<BattleScreen>{
-  Map<String, Map<String, dynamic>> units = new Map();
-  List<String> alliesID = List();
-  List<String> enemiesID = List();
+class _BattleState extends State<Battle> {
+  Map<String, dynamic> allies = new Map();
+  Map<String, dynamic> enemies = new Map();
 
-  Map<String, String> skills = new Map();
+  Map<String, dynamic> useSkill = new Map();
 
-  Map<String, Color> unitBorder = new Map();
-  String combatLog = "";
-  Color enemyBorder = Colors.white70;
-  Color allyBorder = Colors.white70;
+  String midText = "";
 
-  String skillToUseName = "";
-  int targetCount = 0;
-  List<String> targets = new List();
-
-  int buttonSectionPage = 0;
-  String confirmText = "";
-  bool confirmDisabled = true;
-  int currTurn = 0;
-  Widget buttonSection, buttonSection1, buttonSection2, allyWidget, enemyWidget, battleSection, logSection;
-
-  Widget buildSkillTooltip(String skillName, Widget button) {
-    String tooltip = "";
-    for (String key in Skills.skills[skillName].keys) {
-      tooltip += key + ": " + Skills.skills[skillName][key].toString() + "\n";
-    }
-    return Tooltip(
-        message: tooltip,
-        child: button
-    );
-  }
-
-  void unitInfo(context, String unitID) {
-    String infoLeft = "";
-    for (String key in units[unitID].keys) {
-      infoLeft += key.toString() + ": " + units[unitID][key].toString() + "\n";
-    }
-    showModalBottomSheet(
-        context: context,
-        builder: (BuildContext builder) {
-          return Container(
-              child: Wrap(
-                  children: [
-                    Row(
-                        children: [
-                          Text(
-                              infoLeft,
-                              style: TextStyle(fontSize: 20)
-                          ),
-                        ]
-                    )
-                  ]
-              )
-          );
-        }
-    );
-  }
-
-  Widget buildSkillButton(String skillName) {
-    Map skill = Skills.skills[skillName];
-    Widget button = new Container(
-      decoration: new BoxDecoration(
-        color: Colors.white30,
-        border: new Border.all(color: typeColor(skill['type']), width: 2.0),
-        borderRadius: new BorderRadius.circular(10.0)
-      ),
-        child: new FlatButton(
-            textColor: Colors.black87,
-
-            child: new Text(skillName),
-            onPressed: () {
-              skillToUseName = skillName;
-              targetCount = skill['targets'];
-              targets.clear();
-              setConfirmCancel(1);
-              if (targetCount == 1) {
-                setConfirmText("Choose 1 target to use " + skillName + " on.");
-              } else if (targetCount > 1) {
-                setConfirmText("Choose " + targetCount.toString() + " targets to use " + skillName + " on.");
-              }
-            })
-    );
-
-
-    return buildSkillTooltip(skillName, button);
-  }
-
-  Widget buildButtonSection(String skill1, String skill2) {
-    if (skills.containsKey('skill1') && skills.containsKey('skill2') && skills.containsKey('skill3') && skills.containsKey('skill4')) {
-      return Container(
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              buildSkillButton(skills[skill1]),
-              buildSkillButton(skills[skill2]),
-            ],
-          )
-      );
-    }
-    return StreamBuilder(
-        stream: Firestore.instance.collection('players')
-            .document(Data.user.uid)
-            .snapshots(),
-        builder: (context, snapshot) {
-          if (!snapshot.hasData) return const Text('Loading...');
-          skills[skill1] = snapshot.data['equipment'][skill1].toString();
-          skills[skill2] = snapshot.data['equipment'][skill2].toString();
-          return Container(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  buildSkillButton(snapshot.data['equipment'][skill1].toString()),
-                  buildSkillButton(snapshot.data['equipment'][skill2].toString()),
-                ],
-              )
-          );
-        });
-  }
-
-  void buildBattle() {
-    allyWidget = StreamBuilder(
-        stream: Firestore.instance.collection('battles').document(Data.battleID).collection('allies').snapshots(),
-        builder: (cont, snap) {
-          if (!snap.hasData) return const Text('Loading...');
-
-          List<Row> unitWidgets = new List();
-          alliesID.clear();
-
-          for (DocumentSnapshot unit in snap.data.documents) {
-            units[unit.documentID] = unit.data;
-            alliesID.add(unit.documentID);
-            if (!unitBorder.containsKey(unit.documentID))
-              unitBorder[unit.documentID] = Colors.white70;
-            Row unitWidget = Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                    padding: const EdgeInsets.only(bottom: 8.0),
-                    child: FlatButton(
-                        onPressed: () => unitInfo(context, unit.documentID),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(unit['name'].toString()),
-                            Container(child: Text('AP: ' + shortInt(unit['armor']) + "/" + shortInt(unit['maxArmor']))),
-                            Container(child: Text('HP: ' + shortInt(unit['hp']) + "/" + shortInt(unit['maxHP']))),
-                          ],
-                        )
-                    )),
-                GestureDetector(
-                    onTap: (){
-                      if ((skillToUseName != "" && targetCount > 0) || targets.contains(unit.documentID)) {
-                        selectUnit(unit.documentID);
-                      }
-                    },
-                    child: Container(
-                        margin: const EdgeInsets.all(15.0),
-                        padding: const EdgeInsets.all(5.0),
-                        decoration: BoxDecoration(
-                            border: Border.all(width: 3, color: unitBorder[unit.documentID])
-                        ),
-                        child: Sprites.makeSprite(unit['anim']['idle'], 50)
-                    )
-                )
-              ],
-            );
-            unitWidgets.add(unitWidget);
-          }
-
-          return Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: unitWidgets
-          );
-        }
-    );
-
-    enemyWidget = StreamBuilder(
-        stream: Firestore.instance.collection('battles').document(Data.battleID).collection('enemies').snapshots(),
-        builder: (cont, snap) {
-          if (!snap.hasData) return const Text('Loading...');
-
-          List<Row> unitWidgets = new List();
-          enemiesID.clear();
-
-          for (DocumentSnapshot unit in snap.data.documents) {
-            units[unit.documentID] = unit.data;
-            enemiesID.add(unit.documentID);
-            if (!unitBorder.containsKey(unit.documentID))
-              unitBorder[unit.documentID] = Colors.white70;
-            Row unitWidget = Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                GestureDetector(
-                    onTap: (){
-                      if ((skillToUseName != "" && targetCount > 0) || targets.contains(unit.documentID)) {
-                        selectUnit(unit.documentID);
-                      }
-                    },
-                    child: Container(
-                        margin: const EdgeInsets.all(0.0),
-                        padding: const EdgeInsets.all(0.0),
-                        decoration: BoxDecoration(
-                            border: Border.all(width: 3, color: unitBorder[unit.documentID])
-                        ),
-
-                        child: Icon(Icons.image)//Sprites.makeSprite(unit['anim']['idle'], 50)//
-                    )
-                ),
-                Container(
-                    padding: const EdgeInsets.only(bottom: 8.0),
-                    child: FlatButton(
-                        onPressed: () => unitInfo(context, unit.documentID),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(child: Text(unit['name'].toString())),
-                            Container(child: Text('AP: ' + shortInt(unit['armor']) + "/" + shortInt(unit['maxArmor']))),
-                            Container(child: Text('HP: ' + shortInt(unit['hp']) + "/" + shortInt(unit['maxHP']))),
-                          ],
-                        )
-                    )),
-                //Icon(Icons.insert_emoticon, color: Colors.black87),
-              ],
-            );
-            unitWidgets.add(unitWidget);
-          }
-
-          return Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: unitWidgets
-          );
-        }
-    );
-
-    battleSection = Container(
-        child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Expanded(
-                  child: allyWidget
-              ),
-              Expanded(
-                  child: enemyWidget
-              ),
-            ]
-        )
-    );
-
-    buttonSection1 = buildButtonSection('skill1', 'skill2');
-    buttonSection2 = buildButtonSection('skill3', 'skill4');
-
-    logSection = getLog();
-
-    if (buttonSectionPage == 0) {
-      buttonSection = Column(
-          children: [
-            buttonSection1,
-            buttonSection2
-          ]
-      );
-    } else if (buttonSectionPage == 1){
-      buttonSection = Column(
-          children: [
-            Container(
-                child: Text('$confirmText', style: TextStyle(fontSize: 16))
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                RaisedButton(
-                    color: Colors.deepOrange,
-                    textColor: Colors.white,
-                    child: new Text('Confirm'),
-                    onPressed: confirmDisabled ? null : () => confirm()
-                ),
-                RaisedButton(
-                    color: Colors.deepOrange,
-                    textColor: Colors.white,
-                    child: new Text('Cancel'),
-                    onPressed: () => cancel()
-                )
-              ],
-            )
-          ]
-      );
-    } else {
-      buttonSection = Text('Waiting for other players...', style: TextStyle(fontSize: 16), textAlign: TextAlign.center);
-    }
-  }
-
+  bool finishTurn = false;
+  int remaining = -1;
+  int turn = 0;
 
   @override
   Widget build(BuildContext context) {
-
-    buildBattle();
-    return MaterialApp(
-        title: 'RPG',
-        home: Scaffold(
-          backgroundColor: Colors.white,
-          body:
-          Column(
-            children: [
-              battleSection,
-              buttonSection,
-              logSection
-            ],
-          ),
-        ));
+    return Container(
+        decoration: BoxDecoration(
+            image: DecorationImage(
+                image: AssetImage(
+                    "assets/images/backgrounds/airadventurelevel4.png"),
+                fit: BoxFit.cover)),
+        child: Scaffold(
+            backgroundColor: Colors.transparent,
+            body: SafeArea(
+                child: StreamBuilder(
+                    stream: Firestore.instance
+                        .collection('battles')
+                        .document(Data.battleID)
+                        .snapshots(),
+                    builder: (con, snap) => buildScreen(snap)))));
   }
 
-  Widget getLog() {
-    return StreamBuilder(
-        stream: Firestore.instance.collection('battles')
-            .document(Data.battleID)
-            .snapshots(),
-        builder: (con, snap) {
-          if (!snap.hasData) return const Text('Loading...');
-          String finLog = '';
-          int turn = snap.data['turn'];
-          Map<dynamic, dynamic> log = snap.data['log'];
-          List<dynamic> order = snap.data['order'];
-          if (currTurn != turn && log.isNotEmpty) {
-            currTurn = turn;
-            for (int i = 0; i < order.length; i++) {
-              dynamic entries = log[order[i]];
-              for (dynamic entry in entries) {
-                finLog += entry + '\n';
-              }
-            }
-          }
-          return Text(finLog, style: TextStyle(fontSize: 14));
-        });
-  }
-
-  String shortInt(dynamic num) {
-    double dub = num.toDouble();
-    String str = '';
-    if (dub.abs() > 1000000) {
-      dub /= 100000;
-      str = (dub.round()/10).toString() + 'M';
-    } else if (dub.abs() > 1000) {
-      dub /= 100;
-      str = (dub.round()/10).toString() + 'K';
+  Widget buildScreen(AsyncSnapshot snap) {
+    DocumentSnapshot _temp = snap.data;
+    Map<String, dynamic> data;
+    if (!snap.hasData) {
+      return Text('Loading...');
     } else {
-      str = dub.round().toString();
+      data = _temp.data;
     }
-    return str;
+
+    checkQueue();
+
+    if (turn != data['turn']) {
+      turn = data['turn'];
+      getAllUnits();
+    }
+
+    Container botContainer = Container(
+      child: Column(
+        children: <Widget>[
+          Container(
+              child: Center(
+                  child: Text(
+                "Turn $turn\n" + midText,
+                style: TextStyle(color: Colors.white),
+                textAlign: TextAlign.center,
+              )),
+              color: Colors.black12),
+          Container(height: 10),
+          useSkill.containsKey('skill') ? buildTargetButtons() : buildSkills()
+        ],
+        mainAxisAlignment: MainAxisAlignment.start,
+      ),
+      height: 160,
+    );
+
+    return Column(
+      children: <Widget>[buildBattle(), botContainer],
+      mainAxisAlignment: MainAxisAlignment.spaceAround,
+    );
   }
 
-  void setConfirmCancel(int page) {
+  Widget buildBattle() {
+    if (allies.length == 0) {
+      getAllUnits();
+    }
+
+    return Row(children: <Widget>[buildAllies(), buildEnemies()]);
+  }
+
+  Widget buildAllies() {
+    Widget main = Container(
+        child: Center(child: buildUnit(Data.user.uid, 70)));
+    List<Widget> units = new List();
+    for (String unit in allies.keys) {
+      if (unit != Data.user.uid) {
+        units.add(buildUnit(unit, (70 - allies.length * 2).toDouble()));
+      }
+    }
+
+    /* for (int i = 0; i < 19; i++) {
+      units.add(buildUnit(Data.user.uid, (70 - allies.length * 2).toDouble()));
+    } */
+
+    return Expanded(
+        child: Row(
+      children: <Widget>[
+        (units.length == 0
+            ? Container(height: 0, width: 0)
+            : Expanded(child: buildUnitGrid(units))),
+        main
+      ],
+      mainAxisAlignment: MainAxisAlignment.spaceAround,
+    ));
+  }
+
+  Widget buildEnemies() {
+    List<Widget> units = new List();
+    for (String enemy in enemies.keys) {
+      units.add(buildUnit(enemy, (80 - enemies.length * 2).toDouble()));
+    }
+
+    return Expanded(child: buildUnitGrid(units));
+  }
+
+  Widget buildUnitGrid(List<Widget> units) {
+    if (units.length == 0) {
+      return new Container(height: 0, width: 0);
+    }
+    int width = sqrt(units.length).ceil();
+    List<Widget> heightList = List();
+
+    List<Widget> widthList = new List();
+    for (int i = 0; i < units.length; i++) {
+      if (i % width == 0) {
+        heightList.add(Row(
+            children: widthList,
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly));
+        widthList = new List();
+      }
+
+      widthList.add(units[i]);
+
+      if (i + 1 == units.length) {
+        heightList.add(Row(
+            children: widthList,
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly));
+        break;
+      }
+    }
+
+    return Column(
+        children: heightList, mainAxisAlignment: MainAxisAlignment.spaceEvenly);
+  }
+
+  Widget buildUnit(String id, double size) {
+    //size = 30;
+    Widget sprite;
+    if (allies.containsKey(id)) {
+      sprite = Sprites.makeSprite(allies[id]['anim']['idle'], size - 10);
+    } else if (enemies.containsKey(id)) {
+      sprite = Sprites.makeSprite(enemies[id]['anim']['idle'], size - 10);
+    }
+
+    BoxDecoration decoration;
+    decoration = BoxDecoration(color: Colors.black12);
+    if (useSkill.containsKey('targets') && useSkill['targets'].contains(id)) {
+      if (allies.containsKey(id)) {
+        decoration = BoxDecoration(
+            color: Colors.black26,
+            border: Border.all(width: 3, color: Colors.green));
+      } else {
+        decoration = BoxDecoration(
+            color: Colors.black26,
+            border: Border.all(width: 3, color: Colors.redAccent));
+      }
+    }
+
+    Widget unit = GestureDetector(
+        child: Container(
+            child: Center(child: sprite),
+            height: size,
+            width: size,
+            decoration: decoration),
+        onTap: () {
+          pressUnit(id);
+        });
+
+    double ap = 0;
+    double hp = 0;
+    if (allies.containsKey(id)) {
+      ap = size * allies[id]['armor'] / allies[id]['maxArmor'];
+      hp = size * allies[id]['hp'] / allies[id]['maxHP'];
+    } else if (enemies.containsKey(id)) {
+      ap = size * enemies[id]['armor'] / enemies[id]['maxArmor'];
+      hp = size * enemies[id]['hp'] / enemies[id]['maxHP'];
+    }
+
+    Widget apBar = Row(
+      children: <Widget>[
+        Container(height: 7, width: (ap < 0 ? 0 : ap), color: Colors.grey),
+        Container(height: 7, width: (size - ap), color: Colors.black54)
+      ],
+    );
+    Widget hpBar = Row(
+      children: <Widget>[
+        Container(height: 7, width: (hp < 0 ? 0 : hp), color: Colors.lightGreenAccent),
+        Container(height: 7, width: (size - hp), color: Colors.black54)
+      ],
+      mainAxisAlignment: MainAxisAlignment.start,
+    );
+    return Column(
+      children: <Widget>[apBar, hpBar, unit],
+      crossAxisAlignment: CrossAxisAlignment.start,
+    );
+  }
+
+  void pressUnit(String id) {
+    if (!useSkill.containsKey('skill')) {
+      return;
+    }
+
+    if (useSkill['targets'].length < useSkill['skill']['targets'] &&
+        !useSkill['targets'].contains(id)) {
+      useSkill['targets'].add(id);
+    } else if (useSkill['targets'].contains(id)) {
+      useSkill['targets'].remove(id);
+    }
+
     setState(() {
-      buttonSectionPage = page;
+      useSkill = useSkill;
     });
   }
 
-  void setConfirmText(String text) {
+  Widget buildSkills() {
+    if (!allies.containsKey(Data.user.uid)) {
+      return Text("Loading...");
+    }
+
+    Map<dynamic, dynamic> skills = allies[Data.user.uid]['skills'];
+
+    Row buttonRow1 = Row(children: <Widget>[
+      buildSkillButton(skills['skill1']),
+      Container(width: 15),
+      buildSkillButton(skills['skill2'])
+    ], mainAxisAlignment: MainAxisAlignment.center);
+
+    Row buttonRow2 = Row(
+      children: <Widget>[
+        buildSkillButton(skills['skill3']),
+        Container(width: 15),
+        buildSkillButton(skills['skill4'])
+      ],
+      mainAxisAlignment: MainAxisAlignment.center,
+    );
+
+    return Container(
+        child: Column(
+      children: <Widget>[buttonRow1, Container(height: 5), buttonRow2],
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.center,
+    ));
+  }
+
+  Widget buildSkillButton(Map skill) {
+    Row buttonChild = Row(children: <Widget>[
+      Sprites.makeSprite(skill['sprite'], 1.25),
+      Container(width: 10),
+      Text(skill['name'])
+    ], mainAxisAlignment: MainAxisAlignment.start);
+
+    return Container(
+        child: RaisedButton(
+          child: buttonChild,
+          onPressed: finishTurn
+              ? null
+              : () {
+                  pressSkill(skill);
+                },
+          color: typeColor(skill['type']),
+          disabledColor: Colors.white24,
+        ),
+        width: 200);
+  }
+
+  void pressSkill(Map currentSkill) {
     setState(() {
-      confirmDisabled = true;
-      confirmText = text;
+      midText =
+          "Choose up to ${currentSkill['targets']} target${currentSkill['targets'] == 1 ? '' : 's'}.";
+      useSkill = {'skill': currentSkill, 'targets': []};
     });
+  }
+
+  Widget buildTargetButtons() {
+    return Row(children: <Widget>[
+      FlatButton(
+        child: Text("Confirm"),
+        onPressed:
+            (useSkill.containsKey('targets') && useSkill['targets'].length != 0)
+                ? confirm
+                : null,
+        color: Colors.white,
+        disabledColor: Colors.white24,
+      ),
+      Container(width: 25),
+      FlatButton(child: Text("Cancel"), onPressed: cancel, color: Colors.white)
+    ], mainAxisAlignment: MainAxisAlignment.center);
   }
 
   void confirm() {
-    Firestore.instance.collection('battles').document(Data.battleID).collection('queue').document(Data.user.uid).setData({
-      'skill': skillToUseName,
-      'targets': targets
+    Firestore.instance
+        .collection('battles')
+        .document(Data.battleID)
+        .collection('queue')
+        .document(Data.user.uid)
+        .setData({
+      'skill': useSkill['skill']['name'],
+      'targets': useSkill['targets']
     });
 
-    skillToUseName = "";
-    setConfirmCancel(0);
-    deSelectAll();
+    setState(() {
+      useSkill = new Map();
+      finishTurn = true;
+    });
+
+    checkQueue();
   }
 
   void cancel() {
-    skillToUseName = "";
-    targets.clear();
-    setConfirmCancel(0);
-    deSelectAll();
+    setState(() {
+      useSkill = new Map();
+    });
   }
 
-  void selectUnit(String unitID) {
-    Color color;
+  void checkQueue() async {
+    QuerySnapshot queueDocs = await Firestore.instance
+        .collection('battles')
+        .document(Data.battleID)
+        .collection('queue')
+        .getDocuments();
 
-    if (!targets.contains(unitID)) {
-      targets.add(unitID);
-      targetCount--;
-      if (alliesID.contains(unitID)) {
-        color = Colors.green;
-      } else {
-        color = Colors.redAccent;
+    bool finished = false;
+    List<String> notDone = allies.keys.toList();
+    for (DocumentSnapshot doc in queueDocs.documents) {
+      if (notDone.contains(doc.documentID)) {
+        notDone.remove(doc.documentID);
       }
-    } else {
-      targets.remove(unitID);
-      targetCount++;
-      color = Colors.white70;
+      if (doc.documentID == Data.user.uid) {
+        finished = true;
+      }
+    }
+
+    for (int i = 0; i < notDone.length; i++) {
+      notDone[i] = allies[notDone[i]]['name'];
+    }
+
+    if (remaining != notDone.length) {
+      setState(() {
+        remaining = notDone.length;
+        finishTurn = finished;
+        midText =
+            "Waiting${notDone.length == 0 ? '...' : ' for: ' + notDone.join(", ")}";
+      });
+    }
+  }
+
+  Future<void> getAllUnits() async {
+    QuerySnapshot allyDocs = await Firestore.instance
+        .collection('battles')
+        .document(Data.battleID)
+        .collection('allies')
+        .getDocuments();
+
+    Map<String, dynamic> _allies = new Map();
+    for (DocumentSnapshot doc in allyDocs.documents) {
+      _allies[doc.documentID] = doc.data;
+    }
+
+    QuerySnapshot enemyDocs = await Firestore.instance
+        .collection('battles')
+        .document(Data.battleID)
+        .collection('enemies')
+        .getDocuments();
+
+    Map<String, dynamic> _enemies = new Map();
+    for (DocumentSnapshot doc in enemyDocs.documents) {
+      _enemies[doc.documentID] = doc.data;
     }
 
     setState(() {
-      confirmDisabled = (targetCount != 0);
-      unitBorder[unitID] = color;
+      allies = _allies;
+      enemies = _enemies;
     });
   }
 
-  void deSelectAll() {
-    setState(() {
-      unitBorder.forEach((key, val) => (unitBorder[key] = Colors.white70));
-    });
+  Future<void> getUnits(bool ally, String id) async {
+    if (ally) {
+      DocumentSnapshot doc = await Firestore.instance
+          .collection('battles')
+          .document(Data.battleID)
+          .collection('enemies')
+          .document(id)
+          .get();
+      setState(() {
+        allies[id] = doc;
+      });
+    } else {
+      DocumentSnapshot doc = await Firestore.instance
+          .collection('battles')
+          .document(Data.battleID)
+          .collection('allies')
+          .document(id)
+          .get();
+      setState(() {
+        enemies[id] = doc;
+      });
+    }
   }
 
   Color typeColor(String type) {
     switch (type) {
-      case "air": {return Colors.white70;}
-      case "earth": {return Colors.green;}
-      case "fire": {return Colors.deepOrange;}
-      case "water": {return Colors.blue;}
-      case "bludgeon": {return Colors.black12;}
-      case "pierce": {return Colors.amber;}
-      case "slash": {return Colors.redAccent;}
-      case "": {return Colors.grey;}
+      case "air":
+        {
+          return Colors.white70;
+        }
+      case "earth":
+        {
+          return Colors.green;
+        }
+      case "fire":
+        {
+          return Colors.deepOrange;
+        }
+      case "water":
+        {
+          return Colors.blue;
+        }
+      case "bludgeon":
+        {
+          return Colors.black12;
+        }
+      case "pierce":
+        {
+          return Colors.amber;
+        }
+      case "slash":
+        {
+          return Colors.redAccent;
+        }
+      case "":
+        {
+          return Colors.grey;
+        }
     }
   }
 }

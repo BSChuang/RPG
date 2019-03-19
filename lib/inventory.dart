@@ -155,7 +155,7 @@ class _InventoryState extends State<Inventory> {
         tiles.add(GridTile(
           child: Container(
               decoration: BoxDecoration(
-                  color: Colors.black26,
+                  color: Colors.black38,
                   border: Border.all(color: Colors.black54, width: 0.75),
                   borderRadius: BorderRadius.all(Radius.circular(5))),
               child: InkResponse(
@@ -176,7 +176,7 @@ class _InventoryState extends State<Inventory> {
         tiles.add(GridTile(
           child: Container(
               decoration: BoxDecoration(
-                color: Colors.black26,
+                color: Colors.black38,
                   border: Border.all(color: Colors.black54, width: 0.75),
                   borderRadius: BorderRadius.all(Radius.circular(5))),
               child: InkResponse(
