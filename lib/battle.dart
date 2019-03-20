@@ -3,7 +3,7 @@ import 'package:rpg/skills.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:rpg/main.dart';
 import 'package:rpg/sprites.dart';
-import 'dart:math';
+import 'dart:math' as Math;
 
 class Battle extends StatefulWidget {
   @override
@@ -15,6 +15,8 @@ class _BattleState extends State<Battle> {
   Map<String, dynamic> enemies = new Map();
 
   Map<String, dynamic> useSkill = new Map();
+  int alliesPage = 0;
+  int enemiesPage = 0;
 
   String midText = "";
 
@@ -50,24 +52,16 @@ class _BattleState extends State<Battle> {
       data = _temp.data;
     }
 
-    checkQueue();
-
     if (turn != data['turn']) {
       turn = data['turn'];
       getAllUnits();
+      checkQueue();
     }
 
     Container botContainer = Container(
       child: Column(
         children: <Widget>[
-          Container(
-              child: Center(
-                  child: Text(
-                "Turn $turn\n" + midText,
-                style: TextStyle(color: Colors.white),
-                textAlign: TextAlign.center,
-              )),
-              color: Colors.black12),
+          buildMid(),
           Container(height: 10),
           useSkill.containsKey('skill') ? buildTargetButtons() : buildSkills()
         ],
@@ -87,22 +81,31 @@ class _BattleState extends State<Battle> {
       getAllUnits();
     }
 
-    return Row(children: <Widget>[buildAllies(), buildEnemies()]);
+    return Expanded(
+        child: Row(children: <Widget>[buildAllies(), buildEnemies()]));
   }
 
   Widget buildAllies() {
-    Widget main = Container(
-        child: Center(child: buildUnit(Data.user.uid, 70)));
+    Widget main = Column(
+      children: <Widget>[buildUnit(Data.user.uid, 80)],
+      mainAxisAlignment: MainAxisAlignment.center,
+    );
     List<Widget> units = new List();
-    for (String unit in allies.keys) {
-      if (unit != Data.user.uid) {
-        units.add(buildUnit(unit, (70 - allies.length * 2).toDouble()));
-      }
+    List<String> ids = allies.keys.toList();
+    if (ids.contains(Data.user.uid)) {
+      ids.remove(Data.user.uid);
     }
+    int count = (ids.length < (alliesPage + 1) * 20)
+        ? ids.length - enemiesPage * 20
+        : 20;
 
-    /* for (int i = 0; i < 19; i++) {
-      units.add(buildUnit(Data.user.uid, (70 - allies.length * 2).toDouble()));
-    } */
+    for (int i = 0; i < 20; i++) {
+      if (alliesPage * 20 + i == ids.length) {
+        break;
+      }
+      units.add(
+          buildUnit(ids[alliesPage * 20 + i], (80 - count * 2).toDouble()));
+    }
 
     return Expanded(
         child: Row(
@@ -118,8 +121,17 @@ class _BattleState extends State<Battle> {
 
   Widget buildEnemies() {
     List<Widget> units = new List();
-    for (String enemy in enemies.keys) {
-      units.add(buildUnit(enemy, (80 - enemies.length * 2).toDouble()));
+    List<String> ids = enemies.keys.toList();
+    int count = (ids.length < (enemiesPage + 1) * 20)
+        ? ids.length - enemiesPage * 20
+        : 20;
+
+    for (int i = 0; i < 20; i++) {
+      if (enemiesPage * 20 + i == ids.length) {
+        break;
+      }
+      units.add(
+          buildUnit(ids[enemiesPage * 20 + i], (80 - (count * 2)).toDouble()));
     }
 
     return Expanded(child: buildUnitGrid(units));
@@ -129,7 +141,7 @@ class _BattleState extends State<Battle> {
     if (units.length == 0) {
       return new Container(height: 0, width: 0);
     }
-    int width = sqrt(units.length).ceil();
+    int width = Math.sqrt(units.length).ceil();
     List<Widget> heightList = List();
 
     List<Widget> widthList = new List();
@@ -184,9 +196,7 @@ class _BattleState extends State<Battle> {
             height: size,
             width: size,
             decoration: decoration),
-        onTap: () {
-          pressUnit(id);
-        });
+        onTap: () => pressUnit(id));
 
     double ap = 0;
     double hp = 0;
@@ -200,14 +210,17 @@ class _BattleState extends State<Battle> {
 
     Widget apBar = Row(
       children: <Widget>[
-        Container(height: 7, width: (ap < 0 ? 0 : ap), color: Colors.grey),
-        Container(height: 7, width: (size - ap), color: Colors.black54)
+        Container(height: 4, width: Math.max(ap, 0), color: Colors.grey),
+        Container(height: 4, width: Math.min(size - ap, size), color: Colors.black54)
       ],
     );
     Widget hpBar = Row(
       children: <Widget>[
-        Container(height: 7, width: (hp < 0 ? 0 : hp), color: Colors.lightGreenAccent),
-        Container(height: 7, width: (size - hp), color: Colors.black54)
+        Container(
+            height: 4,
+            width: Math.max(hp, 0),
+            color: Colors.lightGreenAccent),
+        Container(height: 4, width: Math.min(size - hp, size), color: Colors.black54)
       ],
       mainAxisAlignment: MainAxisAlignment.start,
     );
@@ -231,6 +244,70 @@ class _BattleState extends State<Battle> {
 
     setState(() {
       useSkill = useSkill;
+    });
+  }
+
+  Widget buildMid() {
+    return Container(
+        child: Row(children: <Widget>[
+          buildScrollButtons(ScrollEnum.allyLeft, ScrollEnum.allyRight),
+          Container(
+              child: Text(
+                "Turn $turn\n" + midText,
+                style: TextStyle(color: Colors.white),
+                textAlign: TextAlign.center,
+              ),
+              width: 250),
+          buildScrollButtons(ScrollEnum.enemyLeft, ScrollEnum.enemyRight),
+        ], mainAxisAlignment: MainAxisAlignment.center),
+        color: Colors.black26);
+  }
+
+  Widget buildScrollButtons(ScrollEnum left, ScrollEnum right) {
+    bool leftEnable = ((left == ScrollEnum.allyLeft && alliesPage > 0) ||
+        left == ScrollEnum.enemyLeft && enemiesPage > 0); // Enable left if there's more to scroll
+    bool rightEnable = ((right == ScrollEnum.allyRight && // Enable right if there's more to scroll
+            alliesPage < ((allies.length - 1) / 20).floor()) ||
+        (right == ScrollEnum.enemyRight &&
+            enemiesPage < ((enemies.length - 1) / 20).floor()));
+    return Row(children: <Widget>[
+      Container(
+        child: FlatButton(
+            child: Icon(
+              Icons.chevron_left,
+              color: leftEnable ? Colors.white : Colors.white30,
+            ),
+            onPressed: leftEnable ? (() => scrollPage(left)) : null),
+        width: 50,
+      ),
+      Container(
+          child: FlatButton(
+              child: Icon(
+                Icons.chevron_right,
+                color: rightEnable ? Colors.white : Colors.white30,
+              ),
+              onPressed: rightEnable ? (() => scrollPage(right)): null),
+          width: 50)
+    ], mainAxisAlignment: MainAxisAlignment.center);
+  }
+
+  void scrollPage(ScrollEnum scrollEnum) {
+    setState(() {
+      switch (scrollEnum) {
+        case ScrollEnum.allyLeft:
+          alliesPage--;
+          break;
+        case ScrollEnum.allyRight:
+          alliesPage++;
+          break;
+        case ScrollEnum.enemyLeft:
+          enemiesPage--;
+          break;
+        case ScrollEnum.enemyRight:
+          enemiesPage++;
+          break;
+        default:
+      }
     });
   }
 
@@ -331,90 +408,107 @@ class _BattleState extends State<Battle> {
   void cancel() {
     setState(() {
       useSkill = new Map();
+      checkQueue();
     });
   }
 
   void checkQueue() async {
-    QuerySnapshot queueDocs = await Firestore.instance
+    await Firestore.instance
         .collection('battles')
         .document(Data.battleID)
         .collection('queue')
-        .getDocuments();
-
-    bool finished = false;
-    List<String> notDone = allies.keys.toList();
-    for (DocumentSnapshot doc in queueDocs.documents) {
-      if (notDone.contains(doc.documentID)) {
-        notDone.remove(doc.documentID);
+        .getDocuments()
+        .then((queueDocs) {
+      bool finished = false;
+      List<String> notDone = allies.keys.toList();
+      for (DocumentSnapshot doc in queueDocs.documents) {
+        if (notDone.contains(doc.documentID)) {
+          notDone.remove(doc.documentID);
+        }
+        if (doc.documentID == Data.user.uid) {
+          finished = true;
+        }
       }
-      if (doc.documentID == Data.user.uid) {
-        finished = true;
+
+      for (int i = 0; i < notDone.length; i++) {
+        notDone[i] = allies[notDone[i]]['name'];
       }
-    }
 
-    for (int i = 0; i < notDone.length; i++) {
-      notDone[i] = allies[notDone[i]]['name'];
-    }
-
-    if (remaining != notDone.length) {
       setState(() {
-        remaining = notDone.length;
-        finishTurn = finished;
+        if (remaining != notDone.length) {
+          remaining = notDone.length;
+          finishTurn = finished;
+        }
         midText =
-            "Waiting${notDone.length == 0 ? '...' : ' for: ' + notDone.join(", ")}";
+            "Waiting${notDone.length == 0 ? '...' : ' for: ' + notDone.length.toString() + ' player'}${notDone.length <= 1 ? '' : 's'}";
       });
-    }
+    });
   }
 
-  Future<void> getAllUnits() async {
-    QuerySnapshot allyDocs = await Firestore.instance
+  void getAllUnits() {
+    getAllies();
+    getEnemies();
+  }
+
+  Future<void> getAllies() async {
+    await Firestore.instance
         .collection('battles')
         .document(Data.battleID)
         .collection('allies')
-        .getDocuments();
+        .getDocuments()
+        .then((allyDocs) {
+      Map<String, dynamic> _allies = new Map();
+      for (DocumentSnapshot doc in allyDocs.documents) {
+        _allies[doc.documentID] = doc.data;
+      }
+      setState(() {
+        allies = _allies;
+      });
+    });
+  }
 
-    Map<String, dynamic> _allies = new Map();
-    for (DocumentSnapshot doc in allyDocs.documents) {
-      _allies[doc.documentID] = doc.data;
-    }
-
-    QuerySnapshot enemyDocs = await Firestore.instance
+  Future<void> getEnemies() async {
+    await Firestore.instance
         .collection('battles')
         .document(Data.battleID)
         .collection('enemies')
-        .getDocuments();
+        .getDocuments()
+        .then((enemyDocs) {
+      Map<String, dynamic> _enemies = new Map();
+      for (DocumentSnapshot doc in enemyDocs.documents) {
+        _enemies[doc.documentID] = doc.data;
+      }
 
-    Map<String, dynamic> _enemies = new Map();
-    for (DocumentSnapshot doc in enemyDocs.documents) {
-      _enemies[doc.documentID] = doc.data;
-    }
-
-    setState(() {
-      allies = _allies;
-      enemies = _enemies;
+      setState(() {
+        enemies = _enemies;
+      });
     });
   }
 
   Future<void> getUnits(bool ally, String id) async {
     if (ally) {
-      DocumentSnapshot doc = await Firestore.instance
-          .collection('battles')
-          .document(Data.battleID)
-          .collection('enemies')
-          .document(id)
-          .get();
-      setState(() {
-        allies[id] = doc;
-      });
-    } else {
-      DocumentSnapshot doc = await Firestore.instance
+      await Firestore.instance
           .collection('battles')
           .document(Data.battleID)
           .collection('allies')
           .document(id)
-          .get();
-      setState(() {
-        enemies[id] = doc;
+          .get()
+          .then((doc) {
+        setState(() {
+          allies[id] = doc;
+        });
+      });
+    } else {
+      await Firestore.instance
+          .collection('battles')
+          .document(Data.battleID)
+          .collection('enemies')
+          .document(id)
+          .get()
+          .then((doc) {
+        setState(() {
+          enemies[id] = doc;
+        });
       });
     }
   }
@@ -456,3 +550,5 @@ class _BattleState extends State<Battle> {
     }
   }
 }
+
+enum ScrollEnum { allyLeft, enemyLeft, allyRight, enemyRight }
