@@ -196,7 +196,8 @@ class _BattleState extends State<Battle> {
             height: size,
             width: size,
             decoration: decoration),
-        onTap: () => pressUnit(id));
+        onTap: () => pressUnit(id),
+        onLongPress: () => holdUnit(id));
 
     double ap = 0;
     double hp = 0;
@@ -211,16 +212,16 @@ class _BattleState extends State<Battle> {
     Widget apBar = Row(
       children: <Widget>[
         Container(height: 4, width: Math.max(ap, 0), color: Colors.grey),
-        Container(height: 4, width: Math.min(size - ap, size), color: Colors.black54)
+        Container(
+            height: 4, width: Math.min(size - ap, size), color: Colors.black54)
       ],
     );
     Widget hpBar = Row(
       children: <Widget>[
         Container(
-            height: 4,
-            width: Math.max(hp, 0),
-            color: Colors.lightGreenAccent),
-        Container(height: 4, width: Math.min(size - hp, size), color: Colors.black54)
+            height: 4, width: Math.max(hp, 0), color: Colors.lightGreenAccent),
+        Container(
+            height: 4, width: Math.min(size - hp, size), color: Colors.black54)
       ],
       mainAxisAlignment: MainAxisAlignment.start,
     );
@@ -247,6 +248,148 @@ class _BattleState extends State<Battle> {
     });
   }
 
+  Future<void> holdUnit(id) async {
+    Map unit = (allies.containsKey(id) ? allies[id] : enemies[id]);
+
+    return showDialog<void>(
+        context: context,
+        barrierDismissible: true,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Column(
+              children: <Widget>[
+                Sprites.makeSprite(unit['anim']['idle'], 40),
+                Text("${unit['name']} - level ${unit['lvl']}"),
+                (unit.containsKey('description')
+                    ? Text(unit['description'],
+                        style: TextStyle(fontStyle: FontStyle.italic))
+                    : Container(width: 0, height: 0))
+              ],
+            ),
+            content: SingleChildScrollView(child: unitStats(unit)),
+          );
+        });
+  }
+
+  Widget unitStats(Map unit) {
+    return ListBody(children: <Widget>[
+      buildEffectsColumn(unit),
+      Container(height: 15),
+      Container(
+        child: Row(
+          children: <Widget>[
+            buildStatColumns("Stats", {
+              "Health": "${unit['hp']}/${unit['maxHP']}",
+              "Armor": "${unit['armor']}/${unit['maxArmor']}",
+              "Damage": unit['damage'],
+              "Crit. chance": unit['critChance'],
+              "Crit. damage": unit['critDamage']
+            }),
+            Container(width: 15),
+            buildStatColumns("Resistances", unit['resistances']),
+            Container(width: 15),
+            buildStatColumns("Attributes", unit['stats']),
+            Container(width: 15),
+          ],
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
+        ),
+      )
+    ]);
+  }
+
+  Widget buildEffectsColumn(Map unit) {
+    Map<String, Map<dynamic, dynamic>> effectMap =
+        new Map(); // {[name, type, duration]: [damage, stack]}
+    Map<String, List<Widget>> finEffects = {
+      "name": [],
+      "type": [],
+      "duration": [],
+      "stack": []
+    }; // {[name], [type], [duration], etc.}
+    for (List<dynamic> types in unit['effects'].values.toList()) {
+      for (Map effect in types) {
+        String key =
+            "${effect['name'].toString()}|${effect['type'].toString()}|${effect['duration'].toString()}";
+        int stack = 1;
+        if (effectMap.containsKey(key)) {
+          stack += effectMap[key]['stack'];
+        }
+
+        effectMap[key] = {
+          "name": effect['name'],
+          "type": effect['type'],
+          "duration": effect['duration'],
+          "stack": stack
+        };
+      }
+    }
+
+    for (Map<dynamic, dynamic> val in effectMap.values.toList()) {
+      for (String key in val.keys.toList()) {
+        finEffects[key].add(Text(val[key].toString()));
+      }
+    }
+
+    return Row(children: <Widget>[
+      Container(
+          child: Column(
+              children: <Widget>[
+                    Text("Status",
+                        style: TextStyle(decoration: TextDecoration.underline))
+                  ] +
+                  finEffects['name'],
+              crossAxisAlignment: CrossAxisAlignment.start),
+          width: 75),
+      Container(
+          child: Column(
+              children: <Widget>[
+                    Text("Stack",
+                        style: TextStyle(decoration: TextDecoration.underline))
+                  ] +
+                  finEffects['stack'],
+              crossAxisAlignment: CrossAxisAlignment.end),
+          width: 75),
+      Container(
+          child: Column(
+              children: <Widget>[
+                    Text("Type",
+                        style: TextStyle(decoration: TextDecoration.underline))
+                  ] +
+                  finEffects['type'],
+              crossAxisAlignment: CrossAxisAlignment.end),
+          width: 75),
+      Container(
+          child: Column(
+              children: <Widget>[
+                    Text("Duration",
+                        style: TextStyle(decoration: TextDecoration.underline))
+                  ] +
+                  finEffects['duration'],
+              crossAxisAlignment: CrossAxisAlignment.end),
+          width: 75)
+    ], mainAxisAlignment: MainAxisAlignment.center);
+  }
+
+  Widget buildStatColumns(String header, Map stats) {
+    List<Widget> rows = new List();
+    rows.add(
+        Text(header, style: TextStyle(decoration: TextDecoration.underline)));
+    for (dynamic key in stats.keys.toList()) {
+      rows.add(statRow(
+          '${key[0].toUpperCase()}${key.substring(1)}', stats[key].toString()));
+    }
+
+    return Container(child: Column(children: rows), width: 150);
+  }
+
+  Widget statRow(String left, String right) {
+    return Row(
+      children: <Widget>[Text(left), Text(right)],
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    );
+  }
+
   Widget buildMid() {
     return Container(
         child: Row(children: <Widget>[
@@ -265,8 +408,11 @@ class _BattleState extends State<Battle> {
 
   Widget buildScrollButtons(ScrollEnum left, ScrollEnum right) {
     bool leftEnable = ((left == ScrollEnum.allyLeft && alliesPage > 0) ||
-        left == ScrollEnum.enemyLeft && enemiesPage > 0); // Enable left if there's more to scroll
-    bool rightEnable = ((right == ScrollEnum.allyRight && // Enable right if there's more to scroll
+        left == ScrollEnum.enemyLeft &&
+            enemiesPage > 0); // Enable left if there's more to scroll
+    bool rightEnable = ((right ==
+                ScrollEnum
+                    .allyRight && // Enable right if there's more to scroll
             alliesPage < ((allies.length - 1) / 20).floor()) ||
         (right == ScrollEnum.enemyRight &&
             enemiesPage < ((enemies.length - 1) / 20).floor()));
@@ -286,7 +432,7 @@ class _BattleState extends State<Battle> {
                 Icons.chevron_right,
                 color: rightEnable ? Colors.white : Colors.white30,
               ),
-              onPressed: rightEnable ? (() => scrollPage(right)): null),
+              onPressed: rightEnable ? (() => scrollPage(right)) : null),
           width: 50)
     ], mainAxisAlignment: MainAxisAlignment.center);
   }
@@ -349,17 +495,80 @@ class _BattleState extends State<Battle> {
     ], mainAxisAlignment: MainAxisAlignment.start);
 
     return Container(
-        child: RaisedButton(
-          child: buttonChild,
-          onPressed: finishTurn
-              ? null
-              : () {
-                  pressSkill(skill);
-                },
-          color: typeColor(skill['type']),
-          disabledColor: Colors.white24,
-        ),
+        child: GestureDetector(
+            child: RaisedButton(
+              child: buttonChild,
+              onPressed: finishTurn ? null : () => pressSkill(skill),
+              color: typeColor(skill['type']),
+              disabledColor: Colors.white24,
+            ),
+            onLongPress: () => holdSkill(skill)),
         width: 200);
+  }
+
+  Future<void> holdSkill(Map skill) {
+    List<Widget> effects = List();
+    if (skill.containsKey('effects')) {
+      if (skill['effects'].containsKey('dot')) {
+        for (int i = 1; i <= skill['effects']['dot'].length; i++) {
+          if (skill['effects']['dot'][i - 1].containsKey('damage')) {
+            skill['effects']['dot'][i - 1]['damage'] *= skill['damage'] / 100;
+          }
+          effects.add(buildStatColumns(
+              "DoT Effect $i", skill['effects']['dot'][i - 1]));
+        }
+      }
+
+      if (skill['effects'].containsKey('status')) {
+        for (int i = 1; i <= skill['effects']['status'].length; i++) {
+          List<Widget> statusList = new List();
+          statusList.add(buildStatColumns(
+              "Status Effect $i", {"Name": skill['effects']['status'][i - 1]['name'], "Duration": skill['effects']['status'][i - 1]['duration']}));
+          if (skill['effects']['status'][i - 1].containsKey('resistances')) {
+            statusList.add(Container(width: 10));            
+            statusList.add(buildStatColumns(
+              "Resistance change", skill['effects']['status'][i - 1]['resistances']));
+          }
+          if (skill['effects']['status'][i - 1].containsKey('stats')) {
+            statusList.add(Container(width: 10));  
+            statusList.add(buildStatColumns(
+              "Attribute change", skill['effects']['status'][i - 1]['stats']));
+          }
+
+          effects.add(Row(children: statusList, crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center));
+        }
+      }
+    }
+
+    return showDialog<void>(
+        context: context,
+        barrierDismissible: true,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Column(
+              children: <Widget>[
+                Sprites.makeSprite(skill['sprite'], 2),
+                Text(skill['name']),
+                (skill.containsKey('description')
+                    ? Text(skill['description'],
+                        style: TextStyle(fontStyle: FontStyle.italic))
+                    : Container(width: 0, height: 0))
+              ],
+            ),
+            content: SingleChildScrollView(
+                child: Column(
+                    children: <Widget>[
+                          buildStatColumns("Stats", {
+                            "Damage": skill['damage'],
+                            "Targets": skill['targets'],
+                            "Cooldown": skill['cooldown'],
+                            "Stat": skill['stat'],
+                            "Type": skill['type'],
+                          }),
+                        ] +
+                        effects)),
+          );
+        });
   }
 
   void pressSkill(Map currentSkill) {
