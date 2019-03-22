@@ -33,7 +33,6 @@ class _InventoryState extends State<Inventory> {
           backgroundColor: Colors.transparent,
           body: SafeArea(child: buildMain()),
           bottomNavigationBar: BottomNavigationBar(
-            backgroundColor: Colors.white54,
             onTap: onTabTapped,
             currentIndex: _currentIndex,
             type: BottomNavigationBarType.fixed,
