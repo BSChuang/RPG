@@ -17,7 +17,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.AuroraStudios.rpg</string>
+	<string>com.aurorastudios.rpg</string>
 	<key>PROJECT_ID</key>
 	<string>mmorpg-2456c</string>
 	<key>STORAGE_BUCKET</key>
